@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reports</title>
+    <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+
+<body>
+
+    <app-sidebar></app-sidebar>
+
+    <div class="main">
+        <h1 class="page-title">Reports</h1>
+
+        <!-- INFO CARDS -->
+        <div class="cards">
+            <div class="card">
+                <p>Total Working Days</p>
+                <h2 id="total-days">—</h2>
+            </div>
+
+            <div class="card present">
+                <p>Average Attendance</p>
+                <h2 id="avg-attendance">—</h2>
+            </div>
+
+            <div class="card absent">
+                <p>Average Absent</p>
+                <h2 id="low-attendance">—</h2>
+            </div>
+        </div>
+
+        <!-- EXPORT ACTION BUTTONS -->
+        <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <button id="btn-export-csv" class="btn-mark"
+                style="background-color: #28a745; border: none; padding: 10px 20px; color: white; border-radius: 5px; cursor: pointer;">📥
+                Download Excel (CSV)</button>
+            <button id="btn-export-pdf" class="btn-mark"
+                style="background-color: #dc3545; border: none; padding: 10px 20px; color: white; border-radius: 5px; cursor: pointer;">📄
+                Download PDF</button>
+        </div>
+
+        <!-- MONTHLY SUMMARY TABLE -->
+        <div class="table-box">
+            <h3>Monthly Summary</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Present %</th>
+                        <th>Absent %</th>
+                    </tr>
+                </thead>
+                <tbody id="monthly-summary">
+                    <tr><td colspan="3" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PDF Generation Libraries -->
+    <script src="js/jspdf.umd.min.js"></script>
+    <script src="js/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/sidebar.js?v=3"></script>
+    <script src="js/reports.js?v=3"></script>
+</body>
+
+</html>

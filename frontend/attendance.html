@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance</title>
+    <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+
+<body>
+
+    <app-sidebar></app-sidebar>
+
+    <div class="main">
+        <h1 class="page-title">Attendance</h1>
+
+        <div class="table-box">
+            <div class="table-header">
+                <h3>Today's Attendance</h3>
+                <div class="date-box">
+                    <label for="attendance-date">Select Date:</label>
+                    <input type="date" id="attendance-date" onchange="filterAttendance()">
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>IN Time</th>
+                        <th>OUT Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="attendance-table-body">
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="js/sidebar.js?v=3"></script>
+    <script src="js/attendance.js?v=3"></script>
+</body>
+
+</html>
