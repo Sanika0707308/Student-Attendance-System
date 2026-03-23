@@ -60,7 +60,7 @@ def on_closed():
     # Add any cleanup logic here, such as stopping scheduler
     os._exit(0)
 
-import webbrowser
+import webview
 
 if __name__ == "__main__":
     # Start the FastAPI server in a separate daemon thread
@@ -70,13 +70,13 @@ if __name__ == "__main__":
     # Wait briefly for server to start
     time.sleep(1)
 
-    print("Opening application in your default web browser...")
-    webbrowser.open("http://127.0.0.1:8000/")
-    
-    try:
-        # Keep the main thread alive since we are no longer using pywebview's blocking loop
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("Shutting down the server...")
-        os._exit(0)
+    print("Opening application in PyWebView...")
+    window = webview.create_window(
+        "STC Attendance System", 
+        "http://127.0.0.1:8000/", 
+        width=1200, 
+        height=800,
+        min_size=(800, 600)
+    )
+    window.events.closed += on_closed
+    webview.start()
