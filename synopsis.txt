@@ -1,0 +1,291 @@
+Mini Project Synopsis on
+
+Smart Biometric Attendance Management System
+
+
+Submitted in partial fulfillment of the requirements for the Mini Project of
+
+THIRD YEAR BACHELOR OF TECHNOLOGY
+in
+COMPUTER SCIENCE & ENGINEERING
+
+Submitted by
+Ms.  SHINDE SANIKA VISHWAS 
+23031087
+Ms.  DESAI AMRUTA VIJAY
+23031098
+Ms.  KAMBLE VAISHNAVI  CHANDRAKANT 
+23041106
+
+Under the Guidance of
+Mrs. A. P. Patil
+
+
+
+DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING  
+
+
+Sant Dnyaneshwar Shikshan Sanstha's
+ANNASAHEB DANGE COLLEGE OF ENGINEERING AND TECHNOLOGY, ASHTA
+(An Empowered Autonomous Institute)
+
+
+SHIVAJI UNIVERSITY, KOLHAPUR
+Academic Year: 2025-26
+
+
+Sponsorship Certificate
+
+
+
+
+
+Educational institutions often face challenges in maintaining accurate student attendance records. Traditional attendance methods such as manual registers or ID-based systems are time-consuming, prone to errors, and may allow proxy attendance. There is also limited communication between institutions and parents regarding student entry and exit timings.This project proposes the development of a Smart Biometric Attendance Management System using fingerprint authentication technology. The system will record student attendance automatically when they enter and exit the college campus. Once attendance is marked through fingerprint verification, an automated email notification will be sent to the respective parent informing them about the student’s arrival and departure time.The system will use a fingerprint sensor module integrated with a web-based application developed using modern technologies such as Java backend. A centralized database MySQL will store student records, attendance logs, and parent email details. Email notifications will be triggered using SMTP services to ensure instant communication.This solution improves attendance accuracy, prevents proxy attendance, enhances security, and strengthens communication between college and parents. It ensures transparency and real-time monitoring of student presence within campus premises.
+Keywords: Biometric System, Fingerprint Authentication, Attendance Automation, Email Notification, Parent Alert System, Database Management System.
+
+.
+
+
+
+
+Abstracti
+Introduction1
+Background and Context1
+Purpose1
+Literature Survey1
+Problem Statement2
+Objectives2
+Scope2
+Proposed Work3
+Methodology3
+Software and Hardware requirements and availability3
+Expected Outcome4
+Schedule 
+References4
+
+
+Introduction
+Attendance management plays a crucial role in academic institutions for monitoring student participation and discipline. Traditional attendance systems require manual effort and are prone to errors and manipulation. Proxy attendance is a common issue in colleges, leading to inaccurate records.With advancements in biometric technology, fingerprint-based systems provide secure and reliable identification. This project focuses on developing a Smart Biometric Attendance Management System that records attendance automatically and sends email notifications to parents whenever a student enters or exits the campus.
+Background and Context
+Biometric systems are widely used in banks, offices, and secure institutions for identity verification. Fingerprint recognition is one of the most reliable biometric methods due to its uniqueness and accuracy. In educational institutions, implementing biometric attendance improves transparency and accountability. However, many colleges still rely on manual registers or RFID cards, which can be misused. Therefore, integrating fingerprint authentication with automated email alerts provides a modern solution for student monitoring and parental communication.
+Purpose
+The purpose of this project is to design and implement a Smart Biometric Attendance Management System that:
+Automatically records attendance using fingerprint verification.
+Sends real-time email notifications to parents during student entry and exit.
+Maintains a centralized attendance database.
+Reduces manual effort and prevents proxy attendance.
+Enhances campus security and parental awareness.
+
+
+
+
+
+
+Literature Survey
+Recent developments in biometric attendance systems highlight the use of fingerprint and facial recognition technologies for secure identification. Several research papers and applications demonstrate improved attendance accuracy using biometric methods.
+
+Year
+Paper / Article / Website / Application
+Author / Owner
+Methodology
+Advantages
+Limitations
+2019
+Biometric Attendance System
+IEEE Research
+Fingerprint recognition
+High accuracy
+Hardware cost 
+2021
+RFID Attendance Monitoring
+Research Journal
+RFID card scanning
+Fast processing
+Proxy possible 
+2023
+Smart Campus Monitoring
+Springer 
+IoT-based tracking
+Real-time monitoring
+Complex setup
+2024
+AI-based Face Recognition Attendance 
+ScienceDirect
+Facial recognition
+Contactless system
+Lighting dependency
+2025
+Cloud-based Biometric System
+Tech Journal
+Biometric + Cloud DB
+Centralized control
+Internet dependency 
+                             
+                                       Table 1: Comparison of selected approache
+Problem Statement
+IDEAL
+The institution requires an automated and secure attendance management system that ensures accurate recording of student entry and exit using biometric fingerprint authentication. The desired system should maintain a centralized database of student attendance records and generate real-time logs whenever a student enters or leaves the campus. It should automatically send email notifications to parents informing them about the exact entry and exit time of their child. This will enhance transparency, improve discipline, strengthen communication between college and parents, and ensure accurate attendance monitoring. The system must also provide secure administrative access and support report generation for academic review.
+REALITY
+Currently, attendance is maintained manually in classrooms using traditional register-based methods. Entry and exit timings of students are not monitored systematically, and there is no automated mechanism to inform parents about student presence in the college. Manual attendance methods are time-consuming and prone to human errors. Proxy attendance is possible, and records may not always be updated accurately. There is no centralized digital database to store and manage attendance logs efficiently.
+CONSEQUENCES
+If the existing system continues, it may lead to inaccurate attendance records, lack of parental awareness regarding student presence, and reduced accountability among students. Manual errors can affect academic evaluation and reporting. Proxy attendance can compromise discipline and institutional credibility. The absence of real-time monitoring may also create security concerns within campus premises. Overall, inefficiencies in attendance management can negatively impact academic performance tracking and institutional transparency.
+PROPOSAL
+To overcome these challenges, this project proposes the development of a Smart Biometric Attendance Management System that integrates fingerprint authentication hardware with a centralized database and automated email notification service. The system will record student attendance during entry and exit through biometric verification and instantly send email alerts to parents. It will maintain secure and accurate attendance logs, provide administrative access for monitoring and reporting, and reduce manual errors and proxy attendance. The proposed system will enhance operational efficiency, ensure transparency, and strengthen communication between the institution and parents.
+
+
+
+Objectives
+To design a fingerprint-based attendance system.
+To store attendance data securely in a centralized database.
+To send automated email notifications to parents.
+To reduce proxy attendance.
+To generate attendance reports for administration.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Scope
+The scope of this project includes the design and development of a Smart Biometric Attendance Management System for monitoring student entry and exit within the college campus using fingerprint authentication technology. The system will cover student registration with fingerprint enrollment, real-time biometric verification during entry and exit, automated attendance logging, and instant email notifications to parents. It will maintain a centralized and secure database to store student details, fingerprint templates, attendance records, and parent email information.The system will also provide an administrative dashboard for authorized staff to view attendance logs, generate daily and monthly attendance reports, and monitor student entry and exit timings. It will ensure secure access through role-based login and maintain proper record management for academic and security purposes. The application will be implemented within a single-campus environment and will function in a controlled network setup.However, the current scope is limited to fingerprint-based authentication and email notification services. Multi-campus integration, SMS alert functionality, mobile application support, cloud-based deployment, and advanced analytics features are not included in the present phase. These features can be considered as future enhancements to expand system functionality and scalability.
+
+
+
+Proposed Work
+Methodology 
+Proposed Modules:
+Student Registration Module (Fingerprint + Details)
+Fingerprint Authentication Module
+Attendance Logging Module
+Email Notification Module
+Admin Dashboard Module
+Report Generation Module
+
+Techniques: 
+The system will use simple, reliable, and secure techniques to ensure accurate biometric authentication, proper attendance logging, and secure data handling. The following techniques will be applied during development and implementation:
+Input validation for student registration details such as name, roll number, department, and parent email ID
+Fingerprint enrollment and template extraction during student registration
+Fingerprint matching algorithm for authentication during entry and exit
+Automatic attendance logging with date and time stamp
+Real-time email notification to parents upon successful entry and exit verification
+Role-based login (Admin/Staff) for secure system access and monitoring
+Database CRUD operations for student records, fingerprint templates, and attendance logs
+Attendance report generation using database queries (daily/monthly summary)
+Module testing and final integration testing
+These techniques will reduce manual errors, prevent proxy attendance, maintain data consistency, and ensure smooth and secure working of the complete system.
+
+Architecture: 
+The proposed system follows a three-layer architecture to ensure proper separation of responsibilities, security, and efficient data handling. The presentation layer (Frontend) is developed as a web-based interface using technologies such as React / HTML-CSS / JavaScript (or Java/Python GUI framework). It provides screens like login, student registration, attendance dashboard, and report generation. This layer allows administrators and staff to interact with the system in a simple and user-friendly manner.
+The application layer (Backend) is implemented using Node.js / Python / Java, where fingerprint authentication, validation, attendance logging, and email notification processes are handled. It verifies fingerprint input, records entry and exit time, and triggers automated email alerts to parents through SMTP services while maintaining secure access control.
+The data layer (Database) uses MySQL or SQLite to store student details, fingerprint templates, attendance records, parent email IDs, and user credentials. The frontend communicates securely with the backend, which performs database operations to store and retrieve data, ensuring real-time updates and reliable reporting.
+         
+                Figure 1: A Block Diagram of Proposed Methodology
+
+
+Software and Hardware requirements and availability
+
+Hardware Requirements:
+· Fingerprint Sensor Module
+· Desktop/Laptop (Intel i3 or higher)
+· 8 GB RAM (minimum)
+· 256 GB storage
+· Internet connectivity
+ 
+Software Requirements: 
+· Windows Operating System
+· Java 
+· MySQL  Database
+· SMTP Email Server
+· VS Code / IDE
+· Web Browser
+
+Availability: All required software tools are free/open-source and can be installed on existing systems.
+
+Expected Outcome
+Upon successful implementation, the system will:
+Record student attendance accurately using fingerprint authentication.
+Automatically send entry and exit email notifications to parents.
+Reduce manual errors and proxy attendance.
+Provide real-time attendance reports.
+Improve transparency and communication between college and parents.
+
+Schedule
+The project schedule is planned from 1 February to 30 April. It is divided into phases such as requirement analysis and literature survey in early February, followed by system architecture design and database design in mid–late February. During March, module development including student registration, fingerprint authentication, attendance logging, email notification integration, and admin dashboard development will be carried out.
+In April, system integration, testing of biometric and email modules, bug fixing, final deployment, and documentation activities will be completed up to 30 April. Figure 2 shows the Gantt chart of the project schedule with task-wise start and end dates, which helps in monitoring progress and ensuring timely completion of the project.
+
+                                                       Figure 2: Project Schedule
+
+
+9. References
+IEEE Xplore, “Design and Implementation of Biometric Attendance System Using Fingerprint Recognition,” 2019. [Online]. Available: https://ieeexplore.ieee.org
+·A. Kumar and S. Sharma, “Fingerprint-Based Attendance Management System,” International Journal of Computer Applications, 2021. [Online]. Available: https://www.ijcaonline.org
+ Springer, “Smart Campus Monitoring Using Biometric Technologies,” 2023. [Online]. Available: https://link.springer.com  
+ScienceDirect, “Face Recognition and Biometric Attendance Systems: A Review,” 2024. [Online]. Available: https://www.sciencedirect.com
+R. Patel et al., “Cloud-Based Biometric Attendance System with Real-Time Notification,” Journal of Emerging Technologies, 2025. [Online]. Available: https://www.sciencedirect.com 
+
+
+Details of Team Members
+
+Roll No
+Name of the Student
+Contact No.
+Email ID
+Signature
+3113
+Shinde Sanika Vishwas
+7028169775
+Sanikas615gmail.com
+
+3117
+Deasi Amruta Vijay
+8421237944
+Amrutavdesai256@gmail.com
+
+3104
+Kamble Vaishnavi 
+Chandrakant
+8766452855
+vaishnavikamble6247@gmail.com
+
+
+Date:
+Place: Ashta
+
+
+
+
+
+
+
+
+
+     Mrs. A. P. Patil    Name of Coordinator 
+               (TY - B )
+           GUIDEMini Project Coordinator
+
+
+
+
+
+Dr. Amol S. DangeDr. Suhel. S. Sayyad
+Mini Project Coordinator    HoD, CSE

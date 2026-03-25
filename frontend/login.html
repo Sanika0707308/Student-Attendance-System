@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Attendance System</title>
+    <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+<body class="login-body">
+
+<div class="login-container">
+    <div class="login-box">
+
+        <h1 class="login-institute">STC's Vidyamandir Institute</h1>
+        <p class="login-subtitle">Biometric Attendance System</p>
+
+        <form id="loginForm" onsubmit="login(event)">
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter username" required>
+            </div>
+
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password" required>
+            </div>
+
+            <button type="submit" class="login-btn">Login</button>
+
+            <p class="login-error" id="error"></p>
+        </form>
+    </div>
+</div>
+
+<script src="js/login.js?v=3"></script>
+</body>
+</html>
