@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance Dashboard</title>
+    <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <app-sidebar></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+        <h1 class="page-title">
+            Dashboard 
+            <span id="device-status-badge" style="font-size: 12px; margin-left: 15px; background: rgba(0,0,0,0.05); padding: 5px 12px; border-radius: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+                <span id="status-dot" class="status-dot offline"></span>
+                <span id="status-text">Device Offline</span>
+            </span>
+        </h1>
+
+
+        <!-- INFO CARDS -->
+        <div class="cards">
+            <div class="card">
+                <p>Total Students</p>
+                <h2 id="total">—</h2>
+            </div>
+
+            <div class="card present">
+                <p>Present</p>
+                <h2 id="present">—</h2>
+            </div>
+
+            <div class="card absent">
+                <p>Absent</p>
+                <h2 id="absent">—</h2>
+            </div>
+        </div>
+
+        <!-- ATTENDANCE TABLE -->
+        <div class="table-box">
+            <div class="table-header">
+                <h3>Attendance Records</h3>
+                <div class="date-box">
+                    <label for="attendance-date">Select Date:</label>
+                    <input type="date" id="attendance-date" onchange="showDateRecords()">
+                </div>
+            </div>
+
+            <table id="attendance-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th>IN Time</th>
+                        <th>OUT Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="js/sidebar.js?v=17"></script>
+    <script src="js/dashboard.js?v=17"></script>
+</body>
+
+</html>
