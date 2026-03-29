@@ -1,0 +1,35 @@
+# Virtual environments
+venv/
+.venv/
+env/
+bin/
+lib/
+include/
+Scripts/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases
+*.db
+*.sqlite3
+
+# OS related
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Local settings
+.env
+config_local.py
+
+# Others
+*.log
+node_modules/
+dist/
+build/
