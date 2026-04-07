@@ -72,3 +72,4 @@ def send_email_notification(student_name: str, punch_time, parent_email: str, ac
     except Exception as e:
         logger.error(f"Exception while sending Email: {e}")
         return False
+

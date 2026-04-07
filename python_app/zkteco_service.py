@@ -37,6 +37,8 @@ class ZKTecoManager:
         self.running = False
         self.thread = None
         self.is_online = False
+        self._time_warned = False
+        self._last_latest_time = None
 
     def start_polling(self, interval_seconds=10):
         """Starts a background thread to poll the machine for new punches."""
@@ -81,18 +83,19 @@ class ZKTecoManager:
             
             # --- AUTO TIME SYNC ---
             # Compare device time with server time. If drift is > 60 seconds, sync it.
-            try:
-                device_time = self.conn.get_time()
-                server_time = datetime.now()
-                drift_seconds = abs((server_time - device_time).total_seconds())
-                
-                if drift_seconds > 60:
-                    logger.info(f"Time drift detected ({drift_seconds}s). Syncing ZKTeco machine with server time...")
-                    print(f"[ZKTeco] Syncing machine time: {device_time} -> {server_time}")
-                    self.conn.set_time(server_time)
-            except Exception as time_err:
-                logger.warning(f"Failed to sync time: {time_err}")
-            
+            if self.conn:
+                try:
+                    device_time = self.conn.get_time()
+                    server_time = datetime.now()
+                    drift_seconds = abs((server_time - device_time).total_seconds())
+                    
+                    if drift_seconds > 60:
+                        logger.info(f"Time drift detected ({drift_seconds}s). Syncing ZKTeco machine with server time...")
+                        print(f"[ZKTeco] Syncing machine time: {device_time} -> {server_time}")
+                        self.conn.set_time(server_time)
+                except Exception as time_err:
+                    logger.warning(f"Failed to sync time: {time_err}")
+
             # Example: process today's records
             today = datetime.now().date()
             new_logs_for_today = 0
@@ -105,10 +108,11 @@ class ZKTecoManager:
                     self._time_warned = True
                     self._last_latest_time = latest_record.timestamp
 
-            for record in attendance_records:
-                if record.timestamp.date() == today:
-                    new_logs_for_today += 1
-                    self._process_single_punch(db, record)
+            if attendance_records:
+                for record in attendance_records:
+                    if record.timestamp.date() == today:
+                        new_logs_for_today += 1
+                        self._process_single_punch(db, record)
         except Exception as e:
             self.is_online = False
             logger.error(f"Error polling ZKTeco: {e}")

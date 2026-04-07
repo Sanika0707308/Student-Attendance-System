@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List
-from datetime import datetime
+from datetime import datetime, time
+from typing import List, Optional
 
 from database import get_db, Attendance, Student
 from email_service import send_email_notification
@@ -21,7 +21,7 @@ class AttendanceRead(BaseModel):
         from_attributes = True
 
 
-from typing import List, Optional
+
 from sqlalchemy import cast, Date
 
 @router.get("/", response_model=List[AttendanceRead])
@@ -30,24 +30,18 @@ def get_attendance_logs(skip: int = 0, limit: int = 100, date: Optional[str] = N
     
     if date:
         try:
-            print(f"[API] Filtering attendance for date: {date}")
-            # SQLite specific date comparison using func.date
-            from sqlalchemy import func
-            query = query.filter(func.date(Attendance.punch_time) == date)
-            print(f"[API] Filter applied for {date}")
-            # The original code had a ValueError check for date format.
-            # With func.date(Attendance.punch_time) == date, SQLAlchemy will handle
-            # the comparison. If 'date' is not in 'YYYY-MM-DD' format, the query
-            # will likely return no results, which is acceptable.
-            # If strict format validation is still desired before the query,
-            # a datetime.strptime check could be re-added here.
-            # For now, removing the unconditional HTTPException as it would
-            # prevent any logs from being returned.
-        except Exception as e: # Catch any potential SQLAlchemy or other errors during filtering
-            raise HTTPException(status_code=400, detail=f"Error applying date filter: {e}")
+            # Parse 'YYYY-MM-DD'
+            filter_date = datetime.strptime(date, "%Y-%m-%d").date()
+            # SQLite / SQLAlchemy casting can be unreliable for datetime -> date comparison.
+            # Using a range [start_of_day, end_of_day] is more robust.
+            start_of_day = datetime.combine(filter_date, time.min)
+            end_of_day = datetime.combine(filter_date, time.max)
+            query = query.filter(Attendance.punch_time >= start_of_day, Attendance.punch_time <= end_of_day)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
             
     logs = query.order_by(Attendance.punch_time.desc()).offset(skip).limit(limit).all()
-    print(f"[API] Found {len(logs)} logs for date {date if date else 'All'}")
+
     
     result = []
     for log in logs:

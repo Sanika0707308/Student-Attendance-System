@@ -16,7 +16,7 @@
     <div class="main">
         <h1 class="page-title">System Settings</h1>
 
-        <div class="table-box" style="max-width: 600px; margin: 0 auto; padding: 30px;">
+        <div class="table-box" style="max-width: 800px; margin: 0 auto; padding: 30px;">
             <h3>Configuration</h3>
             <hr><br>
 
@@ -35,30 +35,31 @@
                 </div>
 
                 <br>
-                <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Time Bound
-                    Configurations</h4>
+                
+               
 
-                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                    <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">Morning IN Time
-                            Bound</label>
-                        <input type="time" id="in_time" class="input-field"
-                            style="width: 100%;">
-                        <small style="color: gray;">Time when late/absent checks trigger.</small>
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">MID Time
-                            Bound</label>
-                        <input type="time" id="mid_time" class="input-field"
-                            style="width: 100%;">
-                        <small style="color: gray;">Time to distinguish late arrivals vs early departures.</small>
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">Afternoon OUT Time
-                            Bound</label>
-                        <input type="time" id="out_time" class="input-field"
-                            style="width: 100%;">
-                        <small style="color: gray;">Time marking end of official classes.</small>
+                <div>
+                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                        Time Bound Configurations</h4>
+                    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                        <div style="flex: 1;">
+                            <label style="display:block; margin-bottom: 5px; font-weight: bold;">Morning IN Time
+                                Bound</label>
+                            <input type="time" id="in_time" class="input-field" style="width: 100%;">
+                            <small style="color: gray;">Time when late/absent checks trigger.</small>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display:block; margin-bottom: 5px; font-weight: bold;">MID Time
+                                Bound</label>
+                            <input type="time" id="mid_time" class="input-field" style="width: 100%;">
+                            <small style="color: gray;">Time to distinguish late arrivals vs early departures.</small>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display:block; margin-bottom: 5px; font-weight: bold;">Afternoon OUT Time
+                                Bound</label>
+                            <input type="time" id="out_time" class="input-field" style="width: 100%;">
+                            <small style="color: gray;">Time marking end of official classes.</small>
+                        </div>
                     </div>
                 </div>
 
@@ -77,8 +78,7 @@
                     <label style="display:block; margin-bottom: 5px; font-weight: bold;">App Password
                         (SMTP_PASSWORD)</label>
                     <input type="password" id="smtp_password" class="input-field"
-                        placeholder="16-character App Password"
-                        style="width: 100%;">
+                        placeholder="16-character App Password" style="width: 100%;">
                     <small style="color: gray;">Do not use your regular password. Generate an App Password in your
                         Google Account Security settings.</small>
                 </div>
