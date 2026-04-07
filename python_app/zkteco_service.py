@@ -37,14 +37,11 @@ class ZKTecoManager:
         self.running = False
         self.thread = None
         self.is_online = False
-<<<<<<< HEAD
-=======
+
         self._time_warned = False
         self._last_latest_time = None
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 
     def start_polling(self, interval_seconds=10):
-        """Starts a background thread to poll the machine for new punches."""
         if self.running:
             return
         
@@ -64,30 +61,22 @@ class ZKTecoManager:
             time.sleep(interval)
 
     def _fetch_and_process_attendance(self):
-        """Connects, reads real-time logs (or all logs) and processes them."""
         db = SessionLocal()
         try:
-            # Get IP Address from Settings
             from database import SystemSettings
             settings = db.query(SystemSettings).first()
             if not settings or not settings.zk_ip_address:
-                return # Can't connect without IP
+                return
                 
             ip_address = settings.zk_ip_address
             zk = ZK(ip_address, port=self.port, timeout=5, password=0, force_udp=False, ommit_ping=False)
             
-            # We connect fresh each time to avoid dropping connection issues mid-day
             self.conn = zk.connect()
             self.is_online = True
             
-            # Fetch attendance logs directly without locking device (no disable_device call)
-            # Using get_attendance() gets all. In a real system we would filter by date.
             attendance_records = self.conn.get_attendance() 
             
-<<<<<<< HEAD
-=======
             # --- AUTO TIME SYNC ---
-            # Compare device time with server time. If drift is > 60 seconds, sync it.
             if self.conn:
                 try:
                     device_time = self.conn.get_time()
@@ -101,31 +90,20 @@ class ZKTecoManager:
                 except Exception as time_err:
                     logger.warning(f"Failed to sync time: {time_err}")
 
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
-            # Example: process today's records
             today = datetime.now().date()
             new_logs_for_today = 0
             
             if attendance_records:
                 latest_record = attendance_records[-1]
-                # Debug print for first time to see if device time is wrong
-                if not hasattr(self, '_time_warned') or self._last_latest_time != latest_record.timestamp:
+                if self._last_latest_time != latest_record.timestamp:
                     print(f"[ZKTeco Debug] Total Logs: {len(attendance_records)}. Latest log time on device: {latest_record.timestamp}")
-                    self._time_warned = True
                     self._last_latest_time = latest_record.timestamp
 
-<<<<<<< HEAD
-            for record in attendance_records:
-                if record.timestamp.date() == today:
-                    new_logs_for_today += 1
-                    self._process_single_punch(db, record)
-=======
-            if attendance_records:
                 for record in attendance_records:
                     if record.timestamp.date() == today:
                         new_logs_for_today += 1
                         self._process_single_punch(db, record)
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
+
         except Exception as e:
             self.is_online = False
             logger.error(f"Error polling ZKTeco: {e}")
@@ -138,36 +116,29 @@ class ZKTecoManager:
             db.close()
 
     def _process_single_punch(self, db, record):
-        """Checks if punch exists in database, if not, saves it and sends SMS."""
         zk_id = str(record.user_id)
         punch_time = record.timestamp
         
-        # 1. Does this punch already exist in DB?
         existing_log = db.query(Attendance).join(Student).filter(
             Student.zk_id == zk_id,
             Attendance.punch_time == punch_time
         ).first()
 
         if existing_log:
-            return # Already processed
+            return
 
-        # 2. Find Student Registration
         student = db.query(Student).filter(Student.zk_id == zk_id).first()
         
         if student:
-            # --- 1. Debounce (Double Punch) Protection ---
-            # Ignore any punches made within 5 minutes of their last recorded punch
             from datetime import timedelta
             last_punch = db.query(Attendance).filter(
                 Attendance.student_id == student.id
             ).order_by(Attendance.punch_time.desc()).first()
             
             if last_punch and (punch_time - last_punch.punch_time) < timedelta(minutes=5):
-                logger.info(f"Ignored double-punch for {student.name} at {punch_time} (cooldown active)")
-                print(f"[ZKTeco Debug] Ignored double-punch for {student.name} at {punch_time} (cooldown active)")
+                logger.info(f"Ignored double-punch for {student.name} at {punch_time}")
                 return
                 
-            # --- 2. 4-Interval Time Boundary Logic ---
             from database import SystemSettings
             settings = db.query(SystemSettings).first()
             
@@ -186,7 +157,6 @@ class ZKTecoManager:
             today_date = punch_time.date()
             p_time = punch_time.time()
             
-            # Identify which of the 4 intervals this punch falls into
             if p_time < in_time_obj:    
                 interval_start = datetime.combine(today_date, datetime.min.time())
                 interval_end = datetime.combine(today_date, in_time_obj)
@@ -208,7 +178,6 @@ class ZKTecoManager:
                 db_status = "Left"
                 action = "बाहेर पडले आहे"
 
-            # Check if student already has a stored punch exactly in this interval
             existing_interval_punch = db.query(Attendance).filter(
                 Attendance.student_id == student.id,
                 Attendance.punch_time >= interval_start,
@@ -216,17 +185,12 @@ class ZKTecoManager:
             ).first()
 
             if existing_interval_punch:
-                # SPECIAL CASE: If they were marked "Absent" automatically, but now they are punching, 
-                # delete the absent record and let the new punch through.
                 if existing_interval_punch.status == "Absent":
                     db.delete(existing_interval_punch)
                     db.commit()
                 else:
-                    logger.info(f"Ignored punch for {student.name} at {punch_time} (Already logged for this interval)")
-                    print(f"[ZKTeco Debug] Ignored punch for {student.name} at {punch_time} (Already logged for this interval)")
                     return
 
-            # --- 3. Save Record ---
             new_attendance = Attendance(
                 student_id=student.id,
                 punch_time=punch_time,
@@ -235,15 +199,11 @@ class ZKTecoManager:
             db.add(new_attendance)
             db.commit()
             
-            logger.info(f"New punch recorded: {student.name} at {punch_time} ({action})")
-            print(f"[ZKTeco] SUCCESS: Recorded punch for {student.name} at {punch_time} ({db_status})")
+            logger.info(f"New punch recorded: {student.name} at {punch_time}")
             
-            # --- 4. Send Email ---
             email_executor.submit(_send_email_async, student.id, punch_time, action)
         else:
             logger.warning(f"Unregistered ZK ID punched: {zk_id}")
-            print(f"[ZKTeco Debug] WARNING: Unregistered ZK ID punched: {zk_id}")
 
-        
-# Singleton instance to be used by the FastAPI app
+# Singleton instance
 zk_manager = ZKTecoManager()
