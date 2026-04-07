@@ -2,8 +2,13 @@ document.addEventListener("DOMContentLoaded", loadDashboard);
 
 async function loadDashboard() {
     try {
+<<<<<<< HEAD
         // Set date picker to today
         const today = new Date().toISOString().split("T")[0];
+=======
+        const now = new Date();
+        const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
         document.getElementById("attendance-date").value = today;
 
         // Fetch Students
@@ -63,11 +68,15 @@ async function loadAttendance(dateStr = null) {
             // Render each student's record
             Object.keys(studentLogs).forEach(studentName => {
                 const punches = studentLogs[studentName];
+<<<<<<< HEAD
                 // Sort by punch_time ascending
+=======
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
                 punches.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
 
                 const firstPunch = punches[0];
                 const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
+<<<<<<< HEAD
 
                 const dateObj = new Date(firstPunch.punch_time);
                 const inTime = dateObj.toLocaleTimeString();
@@ -88,11 +97,62 @@ async function loadAttendance(dateStr = null) {
                         <span style="font-size:10px;color:gray;margin-left:8px;">
                             (Email: ${firstPunch.email_sent ? 'Sent' : 'Failed'})
                         </span>
+=======
+                const effectiveStatus = (lastPunch ? lastPunch.status : firstPunch.status) || "Absent";
+
+                let inTimeText = "--";
+                let outTimeText = "--";
+
+                if (effectiveStatus.trim().toLowerCase() !== "absent") {
+                    inTimeText = new Date(firstPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    if (lastPunch && lastPunch !== firstPunch) {
+                        outTimeText = new Date(lastPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                }
+
+                const statusClass = effectiveStatus.toLowerCase().replace(/\s+/g, "-");
+                const badgeHtml = `<span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(effectiveStatus)}</span>`;
+                
+                let emailHtml = "";
+                if (firstPunch.email_sent) {
+                    emailHtml = `
+                        <div style="display:flex; align-items:center; gap:5px; font-size:10px; padding:2px 10px; border-radius:50px; background: rgba(240, 253, 244, 0.9); border: 1px solid #bbf7d0; color: #166534; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-left:10px;" title="Email sent successfully">
+                            <span style="width: 6px; height: 6px; background: #16a34a; border-radius: 50%; display: inline-block;"></span>
+                            <span style="letter-spacing: 0.5px;">SENT</span>
+                        </div>`;
+                } else {
+                    emailHtml = `
+                        <div style="display:flex; align-items:center; gap:5px; font-size:10px; padding:2px 10px; border-radius:50px; background: rgba(254, 242, 242, 0.9); border: 1px solid #fecaca; color: #991b1b; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-left:10px;" title="Email delivery failed - check settings">
+                            <span style="width: 6px; height: 6px; background: #dc2626; border-radius: 50%; display: inline-block;"></span>
+                            <span style="letter-spacing: 0.5px;">FAILED</span>
+                        </div>`;
+                }
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${new Date(firstPunch.punch_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
+                    <td>${escapeHtml(studentName)}</td>
+                    <td>${inTimeText}</td>
+                    <td>${outTimeText}</td>
+                    <td>
+                        <div style="display: flex; align-items: center;">
+                            ${badgeHtml} ${emailHtml}
+                        </div>
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
                     </td>
                 `;
                 tbodyEl.appendChild(tr);
             });
         }
+<<<<<<< HEAD
+=======
+        
+        // Update Last Updated Timestamp
+        const lastUpdatedEl = document.getElementById("last-updated-text");
+        if (lastUpdatedEl) {
+            lastUpdatedEl.innerText = `Last update: ${new Date().toLocaleTimeString()}`;
+        }
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 
         // Count unique present students (any non-Absent status)
         const uniqueStudentsPunched = new Set(

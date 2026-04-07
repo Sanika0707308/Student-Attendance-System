@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+console.log("REPORTS SCRIPT LOADED - V202");
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 let allAttendanceLogs = [];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -83,6 +87,7 @@ function downloadCSV() {
         return;
     }
 
+<<<<<<< HEAD
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Date,Time,Student Name,ZK ID,Status\n";
 
@@ -94,6 +99,48 @@ function downloadCSV() {
         const zkId = csvQuote(log.student_zk_id);
         const status = csvQuote(log.status);
         csvContent += `${dateStr},${timeStr},${name},${zkId},${status}\n`;
+=======
+    // Group logs by student and date to get IN/OUT times
+    const groupedLogs = {};
+    allAttendanceLogs.forEach(log => {
+        const date = new Date(log.punch_time).toDateString();
+        const key = `${log.student_zk_id}-${date}`;
+        if (!groupedLogs[key]) groupedLogs[key] = [];
+        groupedLogs[key].push(log);
+    });
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Date,Student Name,ZK ID,IN Time,OUT Time,Status\n";
+
+    Object.keys(groupedLogs).sort((a,b) => {
+        const dateA = new Date(groupedLogs[a][0].punch_time);
+        const dateB = new Date(groupedLogs[b][0].punch_time);
+        return dateB - dateA; // Newest first
+    }).forEach(key => {
+        const punches = groupedLogs[key];
+        punches.sort((a,b) => new Date(a.punch_time) - new Date(b.punch_time));
+        const first = punches[0];
+        const last = punches.length > 1 ? punches[punches.length - 1] : null;
+        
+        const d = new Date(first.punch_time);
+        const status = (last ? last.status : first.status) || "Absent";
+        
+        // Robust check: Mask if status is "Absent" OR if the time is 12:30
+        const isAbsent = status.toLowerCase().includes("absent") || (d.getHours() === 12 && d.getMinutes() === 30);
+
+        const inTime = isAbsent ? '--' : d.toLocaleTimeString();
+        const outTime = (last && !isAbsent && last !== first) ? new Date(last.punch_time).toLocaleTimeString() : '--';
+
+        const row = [
+            csvQuote(d.toLocaleDateString()),
+            csvQuote(first.student_name),
+            csvQuote(first.student_zk_id),
+            csvQuote(inTime),
+            csvQuote(outTime),
+            csvQuote(isAbsent ? 'Absent' : status)
+        ];
+        csvContent += row.join(",") + "\n";
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -115,6 +162,7 @@ function downloadPDF() {
     const doc = new jsPDF();
 
     doc.setFontSize(18);
+<<<<<<< HEAD
     doc.text("STC's Vidyamandir - Full Attendance Report", 14, 20);
 
     doc.setFontSize(11);
@@ -133,6 +181,57 @@ function downloadPDF() {
             log.status
         ];
         tableRows.push(logData);
+=======
+    doc.text("STC Attendance Report (REAL TIME)", 14, 20);
+    doc.setFontSize(8);
+    doc.setTextColor(200, 0, 0);
+    doc.text("VERIFICATION V202 - (C) 2026 STC", 14, 23);
+    doc.setTextColor(0, 0, 0);
+
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+
+    const tableColumn = ["Date", "Student Name", "ZK ID", "IN Time", "OUT Time", "Status"];
+    const tableRows = [];
+
+    // Group logs by student and date
+    const groupedLogs = {};
+    allAttendanceLogs.forEach(log => {
+        const date = new Date(log.punch_time).toDateString();
+        const key = `${log.student_zk_id}-${date}`;
+        if (!groupedLogs[key]) groupedLogs[key] = [];
+        groupedLogs[key].push(log);
+    });
+
+    Object.keys(groupedLogs).sort((a,b) => {
+        const dateA = new Date(groupedLogs[a][0].punch_time);
+        const dateB = new Date(groupedLogs[b][0].punch_time);
+        return dateB - dateA;
+    }).forEach(key => {
+        const punches = groupedLogs[key];
+        punches.sort((a,b) => new Date(a.punch_time) - new Date(b.punch_time));
+        const first = punches[0];
+        const last = punches.length > 1 ? punches[punches.length - 1] : null;
+        
+        const d = new Date(first.punch_time);
+        const status = (last ? last.status : first.status) || "Absent";
+        
+        const h = d.getHours();
+        const m = d.getMinutes();
+        const isAbsent = status.toLowerCase().includes("absent") || (h === 12 && m === 30);
+
+        const inTime = isAbsent ? '--' : d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const outTime = (last && !isAbsent && last !== first) ? new Date(last.punch_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--';
+
+        tableRows.push([
+            d.toLocaleDateString(),
+            first.student_name,
+            first.student_zk_id,
+            inTime,
+            outTime,
+            isAbsent ? 'Absent' : status
+        ]);
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
     });
 
     doc.autoTable({
@@ -140,7 +239,20 @@ function downloadPDF() {
         body: tableRows,
         startY: 35,
         theme: 'grid',
+<<<<<<< HEAD
         headStyles: { fillColor: [44, 62, 80] }
+=======
+        headStyles: { fillColor: [44, 62, 80], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 25 },
+            5: { cellWidth: 25 }
+        }
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
     });
 
     doc.save(`STC_Attendance_Report_${new Date().toISOString().split('T')[0]}.pdf`);

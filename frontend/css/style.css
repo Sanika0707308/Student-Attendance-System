@@ -62,6 +62,7 @@ app-sidebar {
     justify-content: center;
     align-items: center;
     background: linear-gradient(135deg, var(--bg-color) 0%, #e2e8f0 100%);
+<<<<<<< HEAD
     padding: 20px;
 }
 
@@ -101,6 +102,19 @@ app-sidebar {
     justify-content: center;
     background: var(--card-bg);
     text-align: center;
+=======
+}
+
+.login-box {
+    width: 400px;
+    padding: 40px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 }
 
 .login-institute {
@@ -207,6 +221,28 @@ app-sidebar {
     transform: translateY(-1px);
 }
 
+<<<<<<< HEAD
+=======
+.btn-attendance {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-std);
+    text-align: center;
+    margin-right: 8px;
+}
+
+.btn-attendance:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 .login-error {
     margin-top: 16px;
     font-size: 13px;
@@ -449,7 +485,12 @@ app-sidebar {
     margin-right: 12px;
 }
 
+<<<<<<< HEAD
 .date-box input[type="date"] {
+=======
+.date-box input[type="date"],
+.status-filter-box select {
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
     padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
@@ -457,13 +498,31 @@ app-sidebar {
     font-size: 14px;
     font-family: inherit;
     transition: var(--transition-std);
+<<<<<<< HEAD
 }
 
 .date-box input[type="date"]:focus {
+=======
+    background-color: white;
+}
+
+.date-box input[type="date"]:focus,
+.status-filter-box select:focus {
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+<<<<<<< HEAD
+=======
+.status-filter-box label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-right: 12px;
+}
+
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 table {
     width: 100%;
     border-collapse: separate;
@@ -630,6 +689,7 @@ tbody tr:last-child td {
     border-left-color: var(--warning);
 }
 
+<<<<<<< HEAD
 @media (max-width: 768px) {
     .login-wrapper {
         flex-direction: column;
@@ -640,4 +700,55 @@ tbody tr:last-child td {
     .login-box {
         padding: 40px 20px;
     }
+=======
+/* ---------- MODAL ---------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: var(--shadow-lg);
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.search-box input {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    width: 300px;
+    transition: var(--transition-std);
+}
+
+.search-box input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    outline: none;
+>>>>>>> 4445c4f78370a36c758193501f0415eb91873626
 }
