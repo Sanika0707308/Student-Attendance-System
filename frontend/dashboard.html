@@ -39,6 +39,16 @@
                 <p>Absent</p>
                 <h2 id="absent">—</h2>
             </div>
+            
+            <div class="card" style="border-left: 5px solid var(--warning);">
+                <p>Emails Failed</p>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <h2 id="emails-failed">—</h2>
+                    <button onclick="retryEmails()" id="btn-retry-emails" style="background-color:var(--warning); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:12px; display:none;">
+                        Retry Sending
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- ATTENDANCE TABLE -->

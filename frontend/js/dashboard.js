@@ -52,6 +52,8 @@ async function loadAttendance(dateStr = null) {
         } else {
             // Group logs by student to pair IN/OUT times
             const studentLogs = {};
+            let failedCount = 0;
+            
             logs.forEach(log => {
                 const key = log.student_name;
                 if (!studentLogs[key]) {
@@ -77,6 +79,11 @@ async function loadAttendance(dateStr = null) {
                 const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
                 const statusClass = effectiveStatus.toLowerCase().replace(/\s+/g, "-");
                 const badgeHtml = `<span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(effectiveStatus)}</span>`;
+                
+                // Track failures
+                if (firstPunch.email_sent === false || (lastPunch && lastPunch.email_sent === false)) {
+                    failedCount++;
+                }
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
@@ -104,6 +111,16 @@ async function loadAttendance(dateStr = null) {
 
         const totalElems = parseInt(document.getElementById("total").innerText) || 0;
         document.getElementById("absent").innerText = Math.max(0, totalElems - uniqueStudentsPunched);
+
+        // Update Failed Emails card
+        if (typeof failedCount !== 'undefined') {
+            document.getElementById("emails-failed").innerText = failedCount;
+            if (failedCount > 0) {
+                document.getElementById("btn-retry-emails").style.display = "block";
+            } else {
+                document.getElementById("btn-retry-emails").style.display = "none";
+            }
+        }
 
     } catch (e) {
         console.error("Error loading attendance logs", e);
@@ -142,4 +159,37 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
+}
+
+// Background retry mechanism
+async function retryEmails() {
+    if (!confirm("Are you sure you want to retry sending all globally failed emails? This will process in the background.")) return;
+    
+    const btn = document.getElementById("btn-retry-emails");
+    btn.disabled = true;
+    btn.innerText = "Retrying...";
+    
+    try {
+        const resp = await fetch('/api/attendance/retry-emails', { method: 'POST' });
+        const data = await resp.json();
+        
+        if (resp.ok) {
+            window.showToast(data.message + " (" + data.count + " records)", "success");
+            // Soft refresh logic to view progress
+            setTimeout(() => {
+                showDateRecords();
+                btn.disabled = false;
+                btn.innerText = "Retry Sending";
+            }, 3000);
+        } else {
+            window.showToast("Failed to retry emails", "error");
+            btn.disabled = false;
+            btn.innerText = "Retry Sending";
+        }
+    } catch (e) {
+        console.error("Error retrying emails", e);
+        window.showToast("Error connecting to server", "error");
+        btn.disabled = false;
+        btn.innerText = "Retry Sending";
+    }
 }

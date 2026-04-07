@@ -17,9 +17,22 @@
         <div class="table-box">
             <div class="table-header">
                 <h3>Today's Attendance</h3>
-                <div class="date-box">
-                    <label for="attendance-date">Select Date:</label>
-                    <input type="date" id="attendance-date" onchange="filterAttendance()">
+                <div class="filters-container" style="display: flex; gap: 15px; align-items: center;">
+                    <div class="status-box">
+                        <label for="attendance-status" style="margin-right: 5px;">Status:</label>
+                        <select id="attendance-status" onchange="filterAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                            <option value="All">All</option>
+                            <option value="Present">Present</option>
+                            <option value="Late">Late</option>
+                            <option value="Left Early">Left Early</option>
+                            <option value="Left">Left</option>
+                            <option value="Absent">Absent</option>
+                        </select>
+                    </div>
+                    <div class="date-box">
+                        <label for="attendance-date" style="margin-right: 5px;">Select Date:</label>
+                        <input type="date" id="attendance-date" onchange="filterAttendance()">
+                    </div>
                 </div>
             </div>
 

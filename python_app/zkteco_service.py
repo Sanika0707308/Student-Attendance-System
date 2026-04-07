@@ -155,44 +155,48 @@ class ZKTecoManager:
             today_date = punch_time.date()
             p_time = punch_time.time()
             
-            # Identify which of the 4 intervals this punch falls into
-            if p_time < in_time_obj:    
-                interval_start = datetime.combine(today_date, datetime.min.time())
-                interval_end = datetime.combine(today_date, in_time_obj)
-                db_status = "Present"
-                action = "पोहोचले आहे"
-            elif p_time < mid_time_obj: 
-                interval_start = datetime.combine(today_date, in_time_obj)
-                interval_end = datetime.combine(today_date, mid_time_obj)
-                db_status = "Late"
-                action = "थोडे उशिरा पोहोचले आहे"
-            elif p_time < out_time_obj: 
-                interval_start = datetime.combine(today_date, mid_time_obj)
-                interval_end = datetime.combine(today_date, out_time_obj)
-                db_status = "Left Early"
-                action = "लवकर बाहेर पडले आहे"
-            else:                       
-                interval_start = datetime.combine(today_date, out_time_obj)
-                interval_end = datetime.combine(today_date, datetime.max.time())
-                db_status = "Left"
-                action = "बाहेर पडले आहे"
+            # --- 2. Two-Half Daily Boundary Logic ---
+            # To completely solve Double Punch bugs near boundary lines (like 07:59 and 08:01),
+            # we divide the day strictly into TWO halves. A student can only have ONE successful punch per half.
+            if p_time < mid_time_obj:
+                # FIRST HALF (Morning / Entry)
+                half_start = datetime.combine(today_date, datetime.min.time())
+                half_end = datetime.combine(today_date, mid_time_obj)
+                
+                if p_time < in_time_obj:
+                    db_status = "Present"
+                    action = "पोहोचले आहे"
+                else:
+                    db_status = "Late"
+                    action = "थोडे उशिरा पोहोचले आहे"
+            else:
+                # SECOND HALF (Afternoon / Exit)
+                half_start = datetime.combine(today_date, mid_time_obj)
+                half_end = datetime.combine(today_date, datetime.max.time())
+                
+                if p_time < out_time_obj:
+                    db_status = "Left Early"
+                    action = "लवकर बाहेर पडले आहे"
+                else:
+                    db_status = "Left"
+                    action = "बाहेर पडले आहे"
 
-            # Check if student already has a stored punch exactly in this interval
-            existing_interval_punch = db.query(Attendance).filter(
+            # Check if student already has a stored punch exactly in this Half of the day!
+            existing_half_punch = db.query(Attendance).filter(
                 Attendance.student_id == student.id,
-                Attendance.punch_time >= interval_start,
-                Attendance.punch_time < interval_end
+                Attendance.punch_time >= half_start,
+                Attendance.punch_time <= half_end  # Inclusive to catch exactly at mid-time bounds
             ).first()
 
-            if existing_interval_punch:
-                # SPECIAL CASE: If they were marked "Absent" automatically, but now they are punching, 
-                # delete the absent record and let the new punch through.
-                if existing_interval_punch.status == "Absent":
-                    db.delete(existing_interval_punch)
+            if existing_half_punch:
+                # SPECIAL CASE: If they were marked "Absent" automatically by the daemon, 
+                # but now they are punching, delete the absent record and let the new punch through.
+                if existing_half_punch.status == "Absent":
+                    db.delete(existing_half_punch)
                     db.commit()
                 else:
-                    logger.info(f"Ignored punch for {student.name} at {punch_time} (Already logged for this interval)")
-                    print(f"[ZKTeco Debug] Ignored punch for {student.name} at {punch_time} (Already logged for this interval)")
+                    logger.info(f"Ignored punch for {student.name} at {punch_time} (Already logged for this half of the day)")
+                    print(f"[ZKTeco Debug] Ignored punch for {student.name} at {punch_time} (Already logged for this half of the day)")
                     return
 
             # --- 3. Save Record ---

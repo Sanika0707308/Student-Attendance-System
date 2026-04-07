@@ -49,3 +49,23 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
     db.delete(student)
     db.commit()
     return {"message": "Student deleted"}
+
+@router.put("/{student_id}", response_model=StudentRead)
+def update_student(student_id: int, student_data: StudentCreate, db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Check if the new ZK ID belongs to someone else
+    if student_data.zk_id != student.zk_id:
+        duplicate = db.query(Student).filter(Student.zk_id == student_data.zk_id).first()
+        if duplicate:
+            raise HTTPException(status_code=400, detail="ZKTeco ID already in use")
+
+    student.name = student_data.name
+    student.zk_id = student_data.zk_id
+    student.parent_email = student_data.parent_email
+
+    db.commit()
+    db.refresh(student)
+    return student

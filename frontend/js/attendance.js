@@ -19,6 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadAttendance() {
     const selectedDate = document.getElementById("attendance-date").value;
+    const selectedStatus = document.getElementById("attendance-status") ? document.getElementById("attendance-status").value : "All";
+    
     try {
         let url = '/api/attendance';
         if (selectedDate) url += `?date=${selectedDate}`;
@@ -43,6 +45,8 @@ async function loadAttendance() {
             studentLogs[key].push(log);
         });
 
+        let rowsAdded = 0;
+
         Object.keys(studentLogs).forEach(studentName => {
             const punches = studentLogs[studentName];
             // Sort by punch_time ascending
@@ -56,6 +60,13 @@ async function loadAttendance() {
 
             // Use the last status as the effective status
             const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
+
+            if (selectedStatus !== "All" && effectiveStatus !== selectedStatus) {
+                return;
+            }
+            
+            rowsAdded++;
+
             const statusClass = effectiveStatus.toLowerCase().replace(/\s+/g, "-");
             const badgeHtml = `<span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(effectiveStatus)}</span>`;
 
@@ -68,6 +79,10 @@ async function loadAttendance() {
             `;
             tbodyEl.appendChild(tr);
         });
+
+        if (rowsAdded === 0) {
+             tbodyEl.innerHTML = "<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>No students found with the selected status.</td></tr>";
+        }
     } catch (e) {
         console.error("Error loading attendance", e);
     }

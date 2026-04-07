@@ -28,7 +28,13 @@
         </div>
 
         <div class="table-box">
-            <h3>Student List</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Student List</h3>
+                <div>
+                    <label for="search-id" style="margin-right: 5px;">Search by ZK ID:</label>
+                    <input type="text" id="search-id" placeholder="Enter ZK ID" oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                </div>
+            </div>
 
             <table>
                 <thead>
@@ -46,6 +52,68 @@
             </table>
         </div>
     </div>
+
+    <!-- Attendance Modal -->
+    <div id="attendance-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div style="background-color: var(--bg-card, #fff); margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span onclick="closeAttendanceModal()" style="color: var(--text-color, #333); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h2 id="modal-student-name" style="margin-top: 0; margin-bottom: 5px;">Student Attendance</h2>
+            <p id="modal-student-zk-id" style="color: var(--text-muted); margin-bottom: 15px; margin-top: 0; font-size: 14px; font-weight: 500;"></p>
+            
+            <div style="margin: 15px 0; display: flex; gap: 15px; align-items: center; justify-content: space-between;">
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <label for="modal-month">Select Month:</label>
+                    <input type="month" id="modal-month" onchange="loadStudentMonthlyAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                    <input type="hidden" id="modal-student-id">
+                </div>
+                <button onclick="downloadStudentMonthlyReport()" class="btn-add" style="background-color: var(--primary); display: none;" id="btn-download-report">Download PDF Report</button>
+            </div>
+
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>IN Time</th>
+                            <th>OUT Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-attendance-body">
+                        <tr><td colspan="4" style="text-align:center; padding: 10px;">Select a month to view attendance.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div id="edit-student-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div style="background-color: var(--bg-card, #fff); margin: 10% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 500px; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span onclick="closeEditStudentModal()" style="color: var(--text-color, #333); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h2 style="margin-top: 0;">Edit Student</h2>
+            <form id="editStudentForm" style="display: flex; flex-direction: column; gap: 15px;">
+                <input type="hidden" id="edit_student_id">
+                <div>
+                    <label for="edit_student_name" style="font-weight: 500; display: block; margin-bottom: 5px;">Student Name:</label>
+                    <input type="text" id="edit_student_name" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;">
+                </div>
+                <div>
+                    <label for="edit_zk_id" style="font-weight: 500; display: block; margin-bottom: 5px;">ZK Machine ID:</label>
+                    <input type="text" id="edit_zk_id" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;">
+                </div>
+                <div>
+                    <label for="edit_parent_email" style="font-weight: 500; display: block; margin-bottom: 5px;">Parent Email:</label>
+                    <input type="email" id="edit_parent_email" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;">
+                </div>
+                <button type="submit" class="btn-add" style="padding: 10px; width: 100%; margin-top: 10px;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- jsPDF and AutoTable for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <script src="js/sidebar.js?v=3"></script>
     <script src="js/students.js?v=3"></script>
