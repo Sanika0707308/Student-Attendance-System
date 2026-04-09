@@ -21,6 +21,9 @@ async function loadDashboard() {
             const selectedDate = document.getElementById("attendance-date").value;
             const todayStr = new Date().toISOString().split("T")[0];
             
+            // Auto-update global counts
+            updateFailedEmailsCount();
+
             // Only auto-update if we are looking at today's records
             if (selectedDate === todayStr) {
                 console.log("Auto-refreshing dashboard logs...");
@@ -28,6 +31,9 @@ async function loadDashboard() {
                 checkDeviceStatus();
             }
         }, 10000); 
+
+        // Initial fetch for global failed emails
+        updateFailedEmailsCount();
 
     } catch (e) {
         console.error("Error loading dashboard", e);
@@ -104,7 +110,7 @@ async function loadAttendance(dateStr = null) {
         // Count unique present students (any non-Absent status)
         const uniqueStudentsPunched = new Set(
             logs.filter(l => l.status !== 'Absent')
-                .map(l => l.student_id || l.student_name)
+                .map(l => l.student_zk_id)
         ).size;
 
         document.getElementById("present").innerText = uniqueStudentsPunched;
@@ -112,15 +118,7 @@ async function loadAttendance(dateStr = null) {
         const totalElems = parseInt(document.getElementById("total").innerText) || 0;
         document.getElementById("absent").innerText = Math.max(0, totalElems - uniqueStudentsPunched);
 
-        // Update Failed Emails card
-        if (typeof failedCount !== 'undefined') {
-            document.getElementById("emails-failed").innerText = failedCount;
-            if (failedCount > 0) {
-                document.getElementById("btn-retry-emails").style.display = "block";
-            } else {
-                document.getElementById("btn-retry-emails").style.display = "none";
-            }
-        }
+        document.getElementById("absent").innerText = Math.max(0, totalElems - uniqueStudentsPunched);
 
     } catch (e) {
         console.error("Error loading attendance logs", e);
@@ -153,6 +151,23 @@ function showDateRecords() {
     loadAttendance(selectedDate);
 }
 
+async function updateFailedEmailsCount() {
+    try {
+        const resp = await fetch('/api/attendance/failed-emails/count');
+        const data = await resp.json();
+        const count = data.count || 0;
+        
+        document.getElementById("emails-failed").innerText = count;
+        if (count > 0) {
+            document.getElementById("btn-retry-emails").style.display = "block";
+        } else {
+            document.getElementById("btn-retry-emails").style.display = "none";
+        }
+    } catch (e) {
+        console.error("Error fetching failed emails count", e);
+    }
+}
+
 // HTML escaping utility to prevent XSS
 function escapeHtml(str) {
     if (!str) return '';
@@ -178,6 +193,7 @@ async function retryEmails() {
             // Soft refresh logic to view progress
             setTimeout(() => {
                 showDateRecords();
+                updateFailedEmailsCount(); // Update the global count after retry
                 btn.disabled = false;
                 btn.innerText = "Retry Sending";
             }, 3000);

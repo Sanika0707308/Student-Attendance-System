@@ -1,5 +1,7 @@
 let allAttendanceLogs = [];
-
+let processedStudents = [];
+let currentPage = 1;
+const PAGE_SIZE = 50;
 document.addEventListener("DOMContentLoaded", () => {
     // Set default month to current month
     const now = new Date();
@@ -10,6 +12,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btn-export-csv").addEventListener("click", downloadCSV);
     document.getElementById("btn-export-pdf").addEventListener("click", downloadPDF);
+
+    document.getElementById("btn-prev-page").addEventListener("click", () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderTablePage(currentPage);
+        }
+    });
+
+    document.getElementById("btn-next-page").addEventListener("click", () => {
+        const totalPages = Math.ceil(processedStudents.length / PAGE_SIZE);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderTablePage(currentPage);
+        }
+    });
 });
 
 async function loadReports() {
@@ -30,6 +47,9 @@ async function loadReports() {
         const students = await studentsResp.json();
         let logs = await logsResp.json();
         
+        const standardFilter = document.getElementById("report-standard").value;
+        const filteredStudents = standardFilter === "All" ? students : students.filter(s => (s.standard || '11th') === standardFilter);
+        
         // --- STRICT FRONTEND FILTERING TO BYPASS BACKEND IGNORING ---
         if (month) {
            const targetYear = parseInt(month.split('-')[0], 10);
@@ -42,7 +62,7 @@ async function loadReports() {
         
         allAttendanceLogs = logs; // store for download
 
-        const studentCount = students.length;
+        const studentCount = filteredStudents.length;
         if (studentCount === 0) {
             document.getElementById("total-days").innerText = 0;
             document.getElementById("avg-attendance").innerText = "0%";
@@ -60,7 +80,7 @@ async function loadReports() {
 
         // Group presences per student using ZK ID
         const studentPresences = {};
-        students.forEach(s => {
+        filteredStudents.forEach(s => {
              studentPresences[s.zk_id] = new Set();
         });
         
@@ -76,7 +96,7 @@ async function loadReports() {
         const totalExpected = studentCount * (totalWorkingDays === 0 ? 1 : totalWorkingDays);
         let presentCountAll = 0;
         
-        students.forEach(s => {
+        filteredStudents.forEach(s => {
             presentCountAll += studentPresences[s.zk_id].size;
         });
 
@@ -89,16 +109,10 @@ async function loadReports() {
         document.getElementById("avg-attendance").innerText = presentPercent + "%";
         document.getElementById("low-attendance").innerText = absentPercent + "%";
 
-        // Fill Student Overview Table
-        const tbody = document.getElementById("student-summary-body");
-        tbody.innerHTML = "";
-        
-        if (students.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
-            return;
-        }
+        // Process Student Overview Data
+        processedStudents = [];
 
-        students.forEach(s => {
+        filteredStudents.forEach(s => {
              const daysPresent = studentPresences[s.zk_id].size;
              let percentage = 0;
              if (totalWorkingDays > 0) {
@@ -110,50 +124,85 @@ async function loadReports() {
              else if (percentage < 75) barColor = "var(--warning)";
              else barColor = "var(--success)";
              
-             const tr = document.createElement("tr");
-             tr.innerHTML = `
-                 <td style="font-weight: 500;">${s.zk_id}</td>
-                 <td>${s.name}</td>
-                 <td>${daysPresent} / ${totalWorkingDays}</td>
-                 <td>
-                    <div style="display:flex; align-items:center; gap: 10px;">
-                        <div style="flex:1; background:#e2e8f0; border-radius:10px; height:8px; overflow:hidden;">
-                            <div style="width:${percentage}%; background:${barColor}; height:100%; transition: width 0.5s ease;"></div>
-                        </div>
-                        <span style="font-weight:600; font-size:13px; min-width:35px; color:${barColor};">${percentage}%</span>
-                    </div>
-                 </td>
-             `;
-             tbody.appendChild(tr);
+             processedStudents.push({
+                 zk_id: s.zk_id,
+                 name: s.name,
+                 standard: s.standard,
+                 daysPresent: daysPresent,
+                 totalWorkingDays: totalWorkingDays,
+                 percentage: percentage,
+                 barColor: barColor
+             });
         });
+
+        // Render first page
+        currentPage = 1;
+        renderTablePage(currentPage);
 
     } catch (e) {
         console.error("Error loading reports", e);
     }
 }
 
+function renderTablePage(page) {
+    const tbody = document.getElementById("student-summary-body");
+    tbody.innerHTML = "";
+    
+    if (processedStudents.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
+        document.getElementById("btn-prev-page").style.display = "none";
+        document.getElementById("btn-next-page").style.display = "none";
+        document.getElementById("page-info").style.display = "none";
+        return;
+    }
+
+    const totalPages = Math.ceil(processedStudents.length / PAGE_SIZE);
+    const startIndex = (page - 1) * PAGE_SIZE;
+    const endIndex = startIndex + PAGE_SIZE;
+    const paginatedData = processedStudents.slice(startIndex, endIndex);
+
+    paginatedData.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td style="font-weight: 500;">${s.zk_id}</td>
+            <td>${s.name}</td>
+            <td>${s.standard || '11th'}</td>
+            <td>${s.daysPresent} / ${s.totalWorkingDays}</td>
+            <td>
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <div style="flex:1; background:#e2e8f0; border-radius:10px; height:8px; overflow:hidden;">
+                    <div style="width:${s.percentage}%; background:${s.barColor}; height:100%; transition: width 0.5s ease;"></div>
+                </div>
+                <span style="font-weight:600; font-size:13px; min-width:35px; color:${s.barColor};">${s.percentage}%</span>
+            </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Update Pagination Controls Visibility
+    document.getElementById("page-info").innerText = `Page ${page} of ${totalPages}`;
+    document.getElementById("page-info").style.display = "inline";
+    
+    const btnPrev = document.getElementById("btn-prev-page");
+    const btnNext = document.getElementById("btn-next-page");
+    
+    btnPrev.style.display = totalPages > 1 ? "inline-block" : "none";
+    btnNext.style.display = totalPages > 1 ? "inline-block" : "none";
+    
+    btnPrev.disabled = page === 1;
+    btnNext.disabled = page === totalPages;
+    
+    btnPrev.style.opacity = page === 1 ? "0.5" : "1";
+    btnNext.style.opacity = page === totalPages ? "0.5" : "1";
+    btnPrev.style.cursor = page === 1 ? "not-allowed" : "pointer";
+    btnNext.style.cursor = page === totalPages ? "not-allowed" : "pointer";
+}
+
 // ============== RELEVENT EXPORT FUNCTIONS ==============
 
 function getSummaryDataFromTable() {
-    const tbody = document.getElementById("student-summary-body");
-    const rows = tbody.getElementsByTagName("tr");
-    const data = [];
-    
-    if (rows.length === 0 || (rows.length === 1 && (rows[0].innerText.includes("Loading") || rows[0].innerText.includes("No students")))) {
-        return data;
-    }
-    
-    for (let i = 0; i < rows.length; i++) {
-        const cols = rows[i].getElementsByTagName("td");
-        if (cols.length === 4) {
-            const zkId = cols[0].innerText.trim();
-            const name = cols[1].innerText.trim();
-            const daysPresent = cols[2].innerText.trim();
-            const percentage = cols[3].innerText.trim();
-            data.push({ zkId, name, daysPresent, percentage });
-        }
-    }
-    return data;
+    return processedStudents;
 }
 
 function downloadCSV() {
@@ -164,21 +213,24 @@ function downloadCSV() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ZK ID,Student Name,Days Present,Attendance %\n";
+    csvContent += "ZK ID,Student Name,Standard,Days Present,Attendance %\n";
 
     data.forEach(row => {
-        const zkId = csvQuote(row.zkId);
+        const zkId = csvQuote(row.zk_id);
         const name = csvQuote(row.name);
+        const standard = csvQuote(row.standard || '11th');
         const days = csvQuote(row.daysPresent);
         const perc = csvQuote(row.percentage);
-        csvContent += `${zkId},${name},${days},${perc}\n`;
+        csvContent += `${zkId},${name},${standard},${days},${perc}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     const month = document.getElementById("report-month").value || "All";
-    link.setAttribute("download", `Student_Attendance_Summary_${month}.csv`);
+    const standard = document.getElementById("report-standard").value;
+    const safeStandard = standard === "All" ? "All" : standard;
+    link.setAttribute("download", `Student_Attendance_Summary_${safeStandard}_${month}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -194,21 +246,23 @@ function downloadPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const month = document.getElementById("report-month").value || "All";
+    const standard = document.getElementById("report-standard").value;
 
     doc.setFontSize(18);
     doc.text("Student Attendance Monthly Summary", 14, 20);
 
     doc.setFontSize(11);
-    doc.text(`Report Month: ${month}`, 14, 28);
+    doc.text(`Report Month: ${month}    |    Standard: ${standard}`, 14, 28);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 34);
 
-    const tableColumn = ["ZK ID", "Student Name", "Days Present", "Attendance %"];
+    const tableColumn = ["ZK ID", "Student Name", "Standard", "Days Present", "Attendance %"];
     const tableRows = [];
 
     data.forEach(row => {
         tableRows.push([
-            row.zkId,
+            row.zk_id,
             row.name,
+            row.standard || '11th',
             row.daysPresent,
             row.percentage
         ]);
@@ -223,7 +277,8 @@ function downloadPDF() {
         headStyles: { fillColor: [44, 62, 80] }
     });
 
-    doc.save(`Student_Attendance_Summary_${month}.pdf`);
+    const safeStandard = standard === "All" ? "All" : standard;
+    doc.save(`Student_Attendance_Summary_${safeStandard}_${month}.pdf`);
 }
 
 // CSV quoting utility — wraps values in quotes if they contain commas, quotes, or newlines
@@ -234,3 +289,4 @@ function csvQuote(value) {
     }
     return str;
 }
+

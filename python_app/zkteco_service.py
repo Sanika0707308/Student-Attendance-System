@@ -95,6 +95,22 @@ class ZKTecoManager:
                 if record.timestamp.date() == today:
                     new_logs_for_today += 1
                     self._process_single_punch(db, record)
+            
+            # --- Device Memory Overflow Protection ---
+            # Automatically clear ZKTeco device memory once logs exceed safe capacity (e.g. 80,000 logs limit)
+            if attendance_records and len(attendance_records) >= 80000:
+                logger.warning(f"Device log limit reached ({len(attendance_records)} logs). Auto-clearing device memory...")
+                print(f"\n[ZKTeco Debug] Device log limit reached. Auto-clearing attendance logs from device memory...")
+                try:
+                    self.conn.disable_device()
+                    self.conn.clear_attendance()
+                    self.conn.enable_device()
+                    logger.info("Device memory cleared successfully.")
+                    print("[ZKTeco Debug] Device memory cleared successfully.\n")
+                except Exception as clear_err:
+                    logger.error(f"Failed to clear device memory: {clear_err}")
+                    print(f"[ZKTeco Debug] Error clearing device memory: {clear_err}")
+                
         except Exception as e:
             self.is_online = False
             logger.error(f"Error polling ZKTeco: {e}")

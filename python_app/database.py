@@ -3,7 +3,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Foreign
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 # Setup SQLite Database
-DB_FILE = os.path.join(os.path.dirname(__file__), "attendance.db")
+test_db = os.environ.get("TEST_DB_FILE")
+DB_FILE = test_db if test_db else os.path.join(os.path.dirname(__file__), "attendance.db")
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_FILE}"
 
 engine = create_engine(
@@ -20,6 +21,7 @@ class Student(Base):
     name = Column(String, index=True)
     zk_id = Column(String, unique=True, index=True) # ID inside the ZKTeco Machine
     parent_email = Column(String) # Replaced parent_phone with parent_email
+    standard = Column(String, default="11th")
 
     # Relationship to attendance logs
     attendances = relationship("Attendance", back_populates="student")

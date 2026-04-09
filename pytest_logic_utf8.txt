@@ -1,0 +1,92 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.12, pytest-8.1.1, pluggy-1.6.0 -- C:\Users\sanik\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe
+cachedir: .pytest_cache
+rootdir: D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System
+plugins: anyio-4.12.1, asyncio-0.23.6, base-url-2.1.0, playwright-0.4.4
+asyncio: mode=Mode.STRICT
+collecting ... collected 2 items
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium] FAILED [ 50%]
+tests/e2e/test_attendance_logic.py::test_duplicate_punch_filtering[chromium] FAILED [100%]
+
+================================== FAILURES ===================================
+_______________ test_attendance_biometric_punch_sync[chromium] ________________
+tests\e2e\test_attendance_logic.py:25: in test_attendance_biometric_punch_sync
+    expect(page.locator("#toast-container")).to_contain_text("successfully")
+E   AssertionError: Locator expected to contain text 'successfully'
+E   Actual value: Failed: Student with this ZKTeco ID already registered 
+E   Call log:
+E     - Expect "to_contain_text" with timeout 5000ms
+E     - waiting for locator("#toast-container")
+E       2 ╫ locator resolved to <div class="toast" id="toast-container"></div>
+E         - unexpected value ""
+E       5 ╫ locator resolved to <div id="toast-container" class="toast show error">Failed: Student with this ZKTeco ID already regisà</div>
+E         - unexpected value "Failed: Student with this ZKTeco ID already registered"
+E       2 ╫ locator resolved to <div class="toast" id="toast-container">Failed: Student with this ZKTeco ID already regisà</div>
+E         - unexpected value "Failed: Student with this ZKTeco ID already registered"
+---------------------------- Captured stdout setup ----------------------------
+2026-04-08 22:57:55 [info     ] Started polling ZKTeco background thread every 10s
+2026-04-08 22:57:55 [error    ] Error polling ZKTeco: Server unreachable
+2026-04-08 22:57:55 [info     ] Started time-bound Absence worker.
+---------------------------- Captured stdout call -----------------------------
+2026-04-08 22:58:05 [error    ] Error polling ZKTeco: Server unreachable
+__________________ test_duplicate_punch_filtering[chromium] ___________________
+tests\e2e\test_attendance_logic.py:51: in test_duplicate_punch_filtering
+    expect(page.locator("#toast-container")).to_contain_text("successfully")
+E   AssertionError: Locator expected to contain text 'successfully'
+E   Actual value: Failed: Student with this ZKTeco ID already registered 
+E   Call log:
+E     - Expect "to_contain_text" with timeout 5000ms
+E     - waiting for locator("#toast-container")
+E       2 ╫ locator resolved to <div class="toast" id="toast-container"></div>
+E         - unexpected value ""
+E       5 ╫ locator resolved to <div id="toast-container" class="toast show error">Failed: Student with this ZKTeco ID already regisà</div>
+E         - unexpected value "Failed: Student with this ZKTeco ID already registered"
+E       2 ╫ locator resolved to <div class="toast" id="toast-container">Failed: Student with this ZKTeco ID already regisà</div>
+E         - unexpected value "Failed: Student with this ZKTeco ID already registered"
+============================== warnings summary ===============================
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\students.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StudentRead(StudentCreate):
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\attendance.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AttendanceRead(BaseModel):
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\settings.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SettingsRead(BaseModel):
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:21: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  C:\Users\sanik\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\applications.py:4599: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:28: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_attendance_logic.py::test_attendance_biometric_punch_sync[chromium]
+FAILED tests/e2e/test_attendance_logic.py::test_duplicate_punch_filtering[chromium]
+======================= 2 failed, 7 warnings in 18.76s ========================

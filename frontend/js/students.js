@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = document.getElementById("student_name").value;
         const zk_id = document.getElementById("zk_id").value;
         const parent_email = document.getElementById("parent_email").value;
+        const standard = document.getElementById("standard").value;
 
         // Front-end duplicate checks
         const existingStudents = window.cachedStudents || [];
@@ -37,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const resp = await fetch('/api/students', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, zk_id, parent_email })
+                body: JSON.stringify({ name, zk_id, parent_email, standard })
             });
 
             if (resp.ok) {
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = document.getElementById("edit_student_name").value;
         const zk_id = document.getElementById("edit_zk_id").value;
         const parent_email = document.getElementById("edit_parent_email").value;
+        const standard = document.getElementById("edit_standard").value;
 
         // Front-end duplicate checks excluding the student being edited
         const existingStudents = window.cachedStudents || [];
@@ -83,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const resp = await fetch(`/api/students/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, zk_id, parent_email })
+                body: JSON.stringify({ name, zk_id, parent_email, standard })
             });
 
             if (resp.ok) {
@@ -110,7 +112,7 @@ async function loadStudents() {
         tbody.innerHTML = "";
 
         if (students.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
         } else {
             students.forEach(s => {
                 const tr = document.createElement("tr");
@@ -118,11 +120,12 @@ async function loadStudents() {
                 tr.innerHTML = `
                     <td>${escapeHtml(String(s.id))}</td>
                     <td>${escapeHtml(s.name)}</td>
+                    <td>${escapeHtml(s.standard || '11th')}</td>
                     <td>${escapeHtml(s.zk_id)}</td>
                     <td>${escapeHtml(s.parent_email)}</td>
                     <td style="display: flex; gap: 5px; align-items: center; white-space: nowrap; flex-wrap: nowrap;">
                         <button onclick="openAttendanceModal(${s.id}, '${safeName}', '${escapeHtml(s.zk_id)}')" class="btn-add" style="padding: 5px 10px; font-size: 12px; margin: 0;">Attendance</button>
-                        <button onclick="openEditStudentModal(${s.id}, '${safeName}', '${escapeHtml(s.zk_id)}', '${escapeHtml(s.parent_email)}')" style="background-color: var(--warning); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">Edit</button>
+                        <button onclick="openEditStudentModal(${s.id}, '${safeName}', '${escapeHtml(s.zk_id)}', '${escapeHtml(s.parent_email)}', '${escapeHtml(s.standard)}')" style="background-color: var(--warning); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">Edit</button>
                         <button onclick="deleteStudent(${s.id})" class="btn-delete" style="padding: 5px 10px; font-size: 12px; margin: 0;">Delete</button>
                     </td>
                 `;
@@ -154,14 +157,20 @@ async function deleteStudent(id) {
 
 function filterStudents() {
     const term = document.getElementById("search-id").value.toLowerCase();
+    const standardFilter = document.getElementById("filter-standard").value;
     const rows = document.getElementById("student-table-body").getElementsByTagName("tr");
     
     for (let i = 0; i < rows.length; i++) {
-        const idCol = rows[i].getElementsByTagName("td")[0];
-        const zkIdCol = rows[i].getElementsByTagName("td")[2];
-        if (zkIdCol) {
+        const zkIdCol = rows[i].getElementsByTagName("td")[3];
+        const standardCol = rows[i].getElementsByTagName("td")[2];
+        if (zkIdCol && standardCol) {
             const zkIdText = zkIdCol.textContent || zkIdCol.innerText;
-            if (zkIdText.toLowerCase().includes(term)) {
+            const standardText = standardCol.textContent || standardCol.innerText;
+            
+            const matchSearch = zkIdText.toLowerCase().includes(term);
+            const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+            
+            if (matchSearch && matchStandard) {
                 rows[i].style.display = "";
             } else {
                 rows[i].style.display = "none";
@@ -192,12 +201,13 @@ function closeAttendanceModal() {
     document.getElementById("attendance-modal").style.display = "none";
 }
 
-function openEditStudentModal(id, name, zk_id, parent_email) {
+function openEditStudentModal(id, name, zk_id, parent_email, standard) {
     document.getElementById("edit-student-modal").style.display = "block";
     document.getElementById("edit_student_id").value = id;
     document.getElementById("edit_student_name").value = name;
     document.getElementById("edit_zk_id").value = zk_id;
     document.getElementById("edit_parent_email").value = parent_email;
+    document.getElementById("edit_standard").value = standard;
 }
 
 function closeEditStudentModal() {

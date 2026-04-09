@@ -1,0 +1,82 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.12, pytest-8.1.1, pluggy-1.6.0 -- C:\Users\sanik\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe
+cachedir: .pytest_cache
+rootdir: D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System
+plugins: anyio-4.12.1, asyncio-0.23.6, base-url-2.1.0, playwright-0.4.4
+asyncio: mode=Mode.STRICT
+collecting ... collected 3 items
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium] FAILED [ 33%]
+tests/e2e/test_students_e2e.py::test_student_duplicate_zk_id[chromium] PASSED [ 66%]
+tests/e2e/test_students_e2e.py::test_student_invalid_empty_fields[chromium] FAILED [100%]
+
+================================== FAILURES ===================================
+_________________ test_student_registration_success[chromium] _________________
+tests\e2e\test_students_e2e.py:19: in test_student_registration_success
+    expect(logged_in_students_page.student_rows).to_have_count(0)
+E   AssertionError: Locator expected to have count '0'
+E   Actual value: 1 
+E   Call log:
+E     - Expect "to_have_count" with timeout 5000ms
+E     - waiting for locator("#student-table-body tr")
+E       9 ╫ locator resolved to 1 element
+E         - unexpected value "1"
+---------------------------- Captured stdout setup ----------------------------
+2026-04-08 23:00:54 [info     ] Started polling ZKTeco background thread every 10s
+2026-04-08 23:00:54 [info     ] Started time-bound Absence worker.
+_________________ test_student_invalid_empty_fields[chromium] _________________
+tests\e2e\test_students_e2e.py:46: in test_student_invalid_empty_fields
+    expect(logged_in_students_page.student_rows).to_have_count(0)
+E   AssertionError: Locator expected to have count '0'
+E   Actual value: 1 
+E   Call log:
+E     - Expect "to_have_count" with timeout 5000ms
+E     - waiting for locator("#student-table-body tr")
+E       9 ╫ locator resolved to 1 element
+E         - unexpected value "1"
+============================== warnings summary ===============================
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\students.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StudentRead(StudentCreate):
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\attendance.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AttendanceRead(BaseModel):
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\settings.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SettingsRead(BaseModel):
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:21: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  C:\Users\sanik\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\applications.py:4599: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:28: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_students_e2e.py::test_student_registration_success[chromium]
+FAILED tests/e2e/test_students_e2e.py::test_student_invalid_empty_fields[chromium]
+================== 2 failed, 1 passed, 7 warnings in 20.09s ===================

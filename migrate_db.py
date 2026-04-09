@@ -24,6 +24,12 @@ try:
 except Exception as e:
     print(f"Error adding out_time: {e}")
 
+try:
+    cursor.execute('ALTER TABLE students ADD COLUMN standard VARCHAR DEFAULT "11th"')
+    print("Added standard")
+except Exception as e:
+    print(f"Error adding standard: {e}")
+
 conn.commit()
 conn.close()
 print("Migration done.")

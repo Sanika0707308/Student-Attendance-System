@@ -12,6 +12,7 @@ class StudentCreate(BaseModel):
     name: str
     zk_id: str
     parent_email: str
+    standard: str = "11th"
 
 class StudentRead(StudentCreate):
     id: int
@@ -20,8 +21,11 @@ class StudentRead(StudentCreate):
         from_attributes = True
 
 @router.get("/", response_model=List[StudentRead])
-def get_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    students = db.query(Student).offset(skip).limit(limit).all()
+def get_students(standard: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(Student)
+    if standard:
+        query = query.filter(Student.standard == standard)
+    students = query.offset(skip).limit(limit).all()
     return students
 
 @router.post("/", response_model=StudentRead)
@@ -33,7 +37,8 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     new_student = Student(
         name=student.name,
         zk_id=student.zk_id,
-        parent_email=student.parent_email
+        parent_email=student.parent_email,
+        standard=student.standard
     )
     db.add(new_student)
     db.commit()
@@ -65,6 +70,7 @@ def update_student(student_id: int, student_data: StudentCreate, db: Session = D
     student.name = student_data.name
     student.zk_id = student_data.zk_id
     student.parent_email = student_data.parent_email
+    student.standard = student_data.standard
 
     db.commit()
     db.refresh(student)

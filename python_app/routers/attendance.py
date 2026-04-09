@@ -13,6 +13,7 @@ class AttendanceRead(BaseModel):
     id: int
     student_name: str
     student_zk_id: str
+    standard: str
     punch_time: datetime
     status: str
     email_sent: bool
@@ -64,6 +65,7 @@ def get_attendance_logs(skip: int = 0, limit: int = 100, date: Optional[str] = N
             "id": log.id,
             "student_name": student.name if student else "Unknown",
             "student_zk_id": student.zk_id if student else "Unknown",
+            "standard": student.standard if student else "11th",
             "punch_time": log.punch_time,
             "status": log.status,
             "email_sent": log.email_sent
@@ -97,6 +99,10 @@ def retry_emails_task(log_ids: list):
         db_local.commit()
     finally:
         db_local.close()
+@router.get("/failed-emails/count")
+def get_failed_emails_count(db: Session = Depends(get_db)):
+    count = db.query(Attendance).filter(Attendance.email_sent == False).count()
+    return {"count": count}
 
 @router.post("/retry-emails")
 def retry_failed_emails(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):

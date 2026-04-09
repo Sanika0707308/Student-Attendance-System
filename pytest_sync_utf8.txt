@@ -1,0 +1,74 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.12, pytest-8.1.1, pluggy-1.6.0 -- C:\Users\sanik\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe
+cachedir: .pytest_cache
+rootdir: D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System
+plugins: anyio-4.12.1, asyncio-0.23.6, base-url-2.1.0, playwright-0.4.4
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium] FAILED [100%]
+
+================================== FAILURES ===================================
+____________ test_hardware_connection_timeout_or_offline[chromium] ____________
+tests\e2e\test_hardware_sync.py:30: in test_hardware_connection_timeout_or_offline
+    expect(logged_in_settings_page.toast).to_contain_text("Failed to connect")
+E   AssertionError: Locator expected to contain text 'Failed to connect'
+E   Actual value: Connection successful! Device is reachable. 
+E   Call log:
+E     - Expect "to_contain_text" with timeout 5000ms
+E     - waiting for locator("#toast-container")
+E       7 ╫ locator resolved to <div id="toast-container" class="toast show success">Connection successful! Device is reachable.</div>
+E         - unexpected value "Connection successful! Device is reachable."
+E       2 ╫ locator resolved to <div class="toast" id="toast-container">Connection successful! Device is reachable.</div>
+E         - unexpected value "Connection successful! Device is reachable."
+---------------------------- Captured stdout setup ----------------------------
+2026-04-08 22:54:23 [info     ] Started polling ZKTeco background thread every 10s
+2026-04-08 22:54:23 [info     ] Started time-bound Absence worker.
+2026-04-08 22:54:23 [error    ] Error polling ZKTeco: Server unreachable
+---------------------------- Captured stdout call -----------------------------
+2026-04-08 22:54:33 [error    ] Error polling ZKTeco: Server unreachable
+============================== warnings summary ===============================
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\students.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StudentRead(StudentCreate):
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\attendance.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AttendanceRead(BaseModel):
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\settings.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SettingsRead(BaseModel):
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:21: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  C:\Users\sanik\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\applications.py:4599: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:28: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_hardware_sync.py::test_hardware_connection_timeout_or_offline[chromium]
+======================= 1 failed, 7 warnings in 12.45s ========================

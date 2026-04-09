@@ -23,6 +23,11 @@
                     style="flex: 1; min-width: 150px; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
                 <input type="email" id="parent_email" placeholder="Parent Email" required
                     style="flex: 1; min-width: 200px; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                <select id="standard" required style="flex: 1; min-width: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; background-color: white;">
+                    <option value="" disabled selected>Select Std</option>
+                    <option value="11th">11th</option>
+                    <option value="12th">12th</option>
+                </select>
                 <button type="submit" class="btn-add" style="padding: 10px 20px;">Add Student</button>
             </form>
         </div>
@@ -30,9 +35,19 @@
         <div class="table-box">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Student List</h3>
-                <div>
-                    <label for="search-id" style="margin-right: 5px;">Search by ZK ID:</label>
-                    <input type="text" id="search-id" placeholder="Enter ZK ID" oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                <div style="display: flex; gap: 15px;">
+                    <div>
+                        <label for="filter-standard" style="margin-right: 5px;">Standard:</label>
+                        <select id="filter-standard" onchange="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                            <option value="All">All</option>
+                            <option value="11th">11th</option>
+                            <option value="12th">12th</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="search-id" style="margin-right: 5px;">Search by ZK ID:</label>
+                        <input type="text" id="search-id" placeholder="Enter ZK ID" oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                    </div>
                 </div>
             </div>
 
@@ -41,13 +56,14 @@
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
+                        <th>Standard</th>
                         <th>ZK ID</th>
                         <th>Email</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="student-table-body">
-                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                    <tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -106,6 +122,13 @@
                     <label for="edit_parent_email" style="font-weight: 500; display: block; margin-bottom: 5px;">Parent Email:</label>
                     <input type="email" id="edit_parent_email" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;">
                 </div>
+                <div>
+                    <label for="edit_standard" style="font-weight: 500; display: block; margin-bottom: 5px;">Standard:</label>
+                    <select id="edit_standard" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="11th">11th</option>
+                        <option value="12th">12th</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn-add" style="padding: 10px; width: 100%; margin-top: 10px;">Save Changes</button>
             </form>
         </div>
@@ -115,8 +138,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-    <script src="js/sidebar.js?v=3"></script>
-    <script src="js/students.js?v=3"></script>
+    <script src="js/sidebar.js?v=4"></script>
+    <script src="js/students.js?v=4"></script>
 </body>
 
 </html>

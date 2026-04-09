@@ -1,0 +1,119 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.12, pytest-8.1.1, pluggy-1.6.0
+rootdir: D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System
+plugins: anyio-4.12.1, asyncio-0.23.6, base-url-2.1.0, playwright-0.4.4
+asyncio: mode=Mode.STRICT
+collected 3 items
+
+tests\test_e2e_app.py FFF                                                [100%]
+
+================================== FAILURES ===================================
+______________________ test_dashboard_renders[chromium] _______________________
+
+logged_in_page = <Page url='http://127.0.0.1:8001/static/dashboard.html'>
+test_url = 'http://127.0.0.1:8001'
+
+    def test_dashboard_renders(logged_in_page: Page, test_url: str):
+        """Test that the application homepage/dashboard renders."""
+        # Check for presence of Dashboard title
+>       expect(logged_in_page.locator("h2").filter(has_text="Dashboard")).to_be_visible()
+E       AssertionError: Locator expected to be visible
+E       Actual value: None
+E       Error: element(s) not found 
+E       Call log:
+E         - Expect "to_be_visible" with timeout 5000ms
+E         - waiting for locator("h2").filter(has_text="Dashboard")
+
+tests\test_e2e_app.py:18: AssertionError
+---------------------------- Captured stdout setup ----------------------------
+2026-04-08 21:59:21 [info     ] Started polling ZKTeco background thread every 10s
+2026-04-08 21:59:21 [info     ] Started time-bound Absence worker.
+[ZKTeco Debug] Total Logs: 84. Latest log time on device: 2026-04-08 21:20:18
+2026-04-08 21:59:22 [info     ] Ignored punch for Anushka Sambhaji Salunkhe at 2026-04-08 21:19:54 (Already logged for this half of the day)
+[ZKTeco Debug] Ignored punch for Anushka Sambhaji Salunkhe at 2026-04-08 21:19:54 (Already logged for this half of the day)
+_____________________ test_settings_page_saves[chromium] ______________________
+
+logged_in_page = <Page url='http://127.0.0.1:8001/static/settings.html'>
+test_url = 'http://127.0.0.1:8001'
+
+    def test_settings_page_saves(logged_in_page: Page, test_url: str):
+        """Test updating settings and ensure they save."""
+        logged_in_page.goto(f"{test_url}/static/settings.html")
+    
+>       expect(logged_in_page.locator("h2").filter(has_text="Settings")).to_be_visible()
+E       AssertionError: Locator expected to be visible
+E       Actual value: None
+E       Error: element(s) not found 
+E       Call log:
+E         - Expect "to_be_visible" with timeout 5000ms
+E         - waiting for locator("h2").filter(has_text="Settings")
+
+tests\test_e2e_app.py:27: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-04-08 21:59:34 [info     ] Ignored punch for Anushka Sambhaji Salunkhe at 2026-04-08 21:19:54 (Already logged for this half of the day)
+[ZKTeco Debug] Ignored punch for Anushka Sambhaji Salunkhe at 2026-04-08 21:19:54 (Already logged for this half of the day)
+________________________ test_students_page[chromium] _________________________
+
+logged_in_page = <Page url='http://127.0.0.1:8001/static/students.html'>
+test_url = 'http://127.0.0.1:8001'
+
+    def test_students_page(logged_in_page: Page, test_url: str):
+        """Test that students page renders correctly."""
+        logged_in_page.goto(f"{test_url}/static/students.html")
+    
+>       expect(logged_in_page.locator("h2").filter(has_text="Student Management")).to_be_visible()
+E       AssertionError: Locator expected to be visible
+E       Actual value: None
+E       Error: element(s) not found 
+E       Call log:
+E         - Expect "to_be_visible" with timeout 5000ms
+E         - waiting for locator("h2").filter(has_text="Student Management")
+
+tests\test_e2e_app.py:44: AssertionError
+============================== warnings summary ===============================
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\students.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class StudentRead(StudentCreate):
+
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\attendance.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AttendanceRead(BaseModel):
+
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\routers\settings.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SettingsRead(BaseModel):
+
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:21: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  C:\Users\sanik\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\fastapi\applications.py:4599: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_e2e_app.py::test_dashboard_renders[chromium]
+  D:\6th sem\Smart-Biometric-Attendance-System\Student-Attendance-System\python_app\main.py:28: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_e2e_app.py::test_dashboard_renders[chromium] - AssertionErr...
+FAILED tests/test_e2e_app.py::test_settings_page_saves[chromium] - AssertionE...
+FAILED tests/test_e2e_app.py::test_students_page[chromium] - AssertionError: ...
+======================= 3 failed, 7 warnings in 23.88s ========================

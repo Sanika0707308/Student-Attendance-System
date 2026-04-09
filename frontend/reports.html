@@ -32,9 +32,20 @@
             </div>
         </div>
 
-        <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 15px; background: var(--card-bg); padding: 15px 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
-            <label for="report-month" style="font-weight: 600; color: var(--text-main);">Select Report Month:</label>
-            <input type="month" id="report-month" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std);">
+        <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 15px; background: var(--card-bg); padding: 15px 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="report-month" style="font-weight: 600; color: var(--text-main);">Select Month:</label>
+                <input type="month" id="report-month" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std);">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="report-standard" style="font-weight: 600; color: var(--text-main);">Standard:</label>
+                <select id="report-standard" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none;">
+                    <option value="All">All</option>
+                    <option value="11th">11th</option>
+                    <option value="12th">12th</option>
+                </select>
+            </div>
         </div>
 
         <!-- EXPORT ACTION BUTTONS -->
@@ -56,6 +67,7 @@
                     <tr>
                         <th>ZK ID</th>
                         <th>Student Name</th>
+                        <th>Standard</th>
                         <th>Days Present</th>
                         <th>Attendance %</th>
                     </tr>
@@ -64,14 +76,21 @@
                     <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
                 </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div id="pagination-controls" style="display: flex; justify-content: flex-end; align-items: center; gap: 15px; margin-top: 15px;">
+                <button id="btn-prev-page" class="btn-mark" style="background-color: var(--primary); border: none; padding: 6px 12px; color: white; border-radius: 4px; cursor: pointer; display: none;">Previous</button>
+                <span id="page-info" style="font-size: 14px; font-weight: 500; display: none;">Page 1 of 1</span>
+                <button id="btn-next-page" class="btn-mark" style="background-color: var(--primary); border: none; padding: 6px 12px; color: white; border-radius: 4px; cursor: pointer; display: none;">Next</button>
+            </div>
         </div>
     </div>
 
     <!-- PDF Generation Libraries -->
-    <script src="js/jspdf.umd.min.js"></script>
-    <script src="js/jspdf.plugin.autotable.min.js"></script>
-    <script src="js/sidebar.js?v=3"></script>
-    <script src="js/reports.js?v=3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/sidebar.js?v=4"></script>
+    <script src="js/reports.js?v=6"></script>
 </body>
 
 </html>

@@ -33,6 +33,18 @@
                         <label for="attendance-date" style="margin-right: 5px;">Select Date:</label>
                         <input type="date" id="attendance-date" onchange="filterAttendance()">
                     </div>
+                    <div class="standard-box">
+                        <label for="attendance-standard" style="margin-right: 5px;">Standard:</label>
+                        <select id="attendance-standard" onchange="filterAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color, #ccc);">
+                            <option value="All">All</option>
+                            <option value="11th">11th</option>
+                            <option value="12th">12th</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; border-left: 1px solid var(--border-color, #ccc); padding-left: 15px;">
+                        <button id="btn-export-daily-csv" class="btn-mark" style="background-color: #17a2b8; border: none; padding: 5px 15px; color: white; border-radius: 5px; cursor: pointer;">CSV Download</button>
+                        <button id="btn-export-daily-pdf" class="btn-mark" style="background-color: #dc3545; border: none; padding: 5px 15px; color: white; border-radius: 5px; cursor: pointer;">PDF Download</button>
+                    </div>
                 </div>
             </div>
 
@@ -40,20 +52,23 @@
                 <thead>
                     <tr>
                         <th>Student Name</th>
+                        <th>Standard</th>
                         <th>IN Time</th>
                         <th>OUT Time</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="attendance-table-body">
-                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=3"></script>
-    <script src="js/attendance.js?v=3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/sidebar.js?v=4"></script>
+    <script src="js/attendance.js?v=4"></script>
 </body>
 
 </html>
