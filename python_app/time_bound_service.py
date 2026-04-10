@@ -48,11 +48,12 @@ class TimeBoundManager:
             now = datetime.now()
             
             # Note: We only trigger the automatic absent flag if the current time has passed the boundary.
-            if now.time() >= mid_time_obj:
+            # AND it's not Sunday (weekday 6)
+            if now.time() >= mid_time_obj and now.weekday() != 6:
                 today_start = datetime.combine(now.date(), datetime.min.time())
                 today_end = datetime.combine(now.date(), datetime.max.time())
                 
-                students = db.query(Student).all()
+                students = db.query(Student).filter(Student.is_active == True).all()
                 for student in students:
                     # Check if the student has ANY record (Present or already marked Absent) for today
                     has_record = db.query(Attendance).filter(

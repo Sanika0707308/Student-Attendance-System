@@ -11,24 +11,29 @@ from routers.attendance import router as attendance_router
 from routers.settings import router as settings_router
 from zkteco_service import zk_manager
 from time_bound_service import time_bound_manager
+from backup_service import backup_manager
 
-app = FastAPI(title="Attendance System API")
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
+    # Startup: Start polling ZKTeco device every 10 seconds
+    zk_manager.start_polling(interval_seconds=10)
+    # Start the Time-Bound absence checker background daemon
+    time_bound_manager.start_scheduler()
+    # Start daily database backup service
+    backup_manager.start()
+    yield
+    # Shutdown
+    zk_manager.stop_polling()
+    time_bound_manager.stop_scheduler()
+    backup_manager.stop()
+
+app = FastAPI(title="Attendance System API", lifespan=lifespan)
 
 app.include_router(students_router)
 app.include_router(attendance_router)
 app.include_router(settings_router)
-
-@app.on_event("startup")
-def startup_event():
-    # Start polling ZKTeco device every 10 seconds
-    zk_manager.start_polling(interval_seconds=10)
-    # Start the Time-Bound absence checker background daemon
-    time_bound_manager.start_scheduler()
-
-@app.on_event("shutdown")
-def shutdown_event():
-    zk_manager.stop_polling()
-    time_bound_manager.stop_scheduler()
 
 import sys
 

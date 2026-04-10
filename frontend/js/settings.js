@@ -44,7 +44,9 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
         if (resp.ok) {
             window.showToast("Settings saved successfully!", "success");
         } else {
-            window.showToast("Failed to save settings.", "error");
+            const errData = await resp.json().catch(() => null);
+            const errMsg = errData?.detail || "Failed to save settings.";
+            window.showToast(errMsg, "error");
         }
     } catch (e) {
         console.error("Error saving settings:", e);
@@ -99,5 +101,51 @@ document.getElementById('btnClearLogs').addEventListener('click', async () => {
     } catch (e) {
         console.error(e);
         window.showToast("Network Error: Failed to reach hardware wipe service.", "error");
+    }
+});
+
+document.getElementById('btnExportDb').addEventListener('click', () => {
+    // Navigate to the export endpoint which triggers a download
+    window.location.href = '/api/settings/export-db';
+});
+
+document.getElementById('btnImportDb').addEventListener('click', () => {
+    document.getElementById('importDbFile').click();
+});
+
+document.getElementById('importDbFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!confirm("WARNING: Importing a database will replace ALL current students, attendance, and settings. The application will restart.\n\nAre you sure you want to proceed?")) {
+        e.target.value = ''; // Reset input
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    window.showToast("Uploading database...", "warning");
+
+    try {
+        const resp = await fetch('/api/settings/import-db', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (resp.ok) {
+            window.showToast("Database imported successfully! Reloading...", "success");
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            const data = await resp.json().catch(() => null);
+            window.showToast("Import failed: " + (data?.detail || "Unknown error"), "error");
+        }
+    } catch (e) {
+        console.error(e);
+        window.showToast("Network error during import.", "error");
+    } finally {
+        e.target.value = ''; // Reset input
     }
 });

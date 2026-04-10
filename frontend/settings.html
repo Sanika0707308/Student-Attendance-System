@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings</title>
     <link rel="stylesheet" href="css/style.css?v=3">
 </head>
@@ -96,9 +97,17 @@
                         ZKTeco Logs</button>
                     <p id="wipeMessage" style="margin-top: 5px; font-weight: bold; font-size: 0.9em;"></p>
                 </div>
-
-                <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;">Save
-                    Settings</button>
+                <div style="margin-top: 30px; padding: 20px; border: 1px dashed var(--primary); border-radius: 8px; background-color: #f0f9ff;">
+                    <h4 style="color: var(--primary); margin-bottom: 5px;">💾 Database Management</h4>
+                    <small style="color: gray; display: block; margin-bottom: 10px;">Import or Export the entire application database. Importing a database will overwrite current data.</small>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" id="btnExportDb" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;">Export Database</button>
+                        <button type="button" id="btnImportDb" style="padding: 10px 20px; background: #64748b; color: white; border: none; border-radius: 5px; cursor: pointer;">Import Database</button>
+                    </div>
+                    <input type="file" id="importDbFile" accept=".db,.sqlite" style="display: none;">
+                </div>
+                
+                <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;">Save Settings</button>
             </form>
         </div>
     </div>

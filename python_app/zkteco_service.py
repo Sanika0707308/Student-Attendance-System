@@ -2,12 +2,33 @@ import threading
 import time
 from datetime import datetime
 import concurrent.futures
-from structlog import get_logger
 from zk import ZK
 from database import SessionLocal, Student, Attendance
 from email_service import send_email_notification
 
-logger = get_logger()
+import structlog
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Configure logging to both console and file
+log_file = "app.log"
+handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+logging.basicConfig(
+    format="%(message)s",
+    level=logging.INFO,
+    handlers=[handler, logging.StreamHandler()]
+)
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer()
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
+
+logger = structlog.get_logger()
 
 # Global Thread Pool for non-blocking email triggers
 email_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
@@ -79,22 +100,30 @@ class ZKTecoManager:
             # Using get_attendance() gets all. In a real system we would filter by date.
             attendance_records = self.conn.get_attendance() 
             
-            # Example: process today's records
+            # --- PERFORMANCE OPTIMIZATION ---
+            # Instead of looping through all logs (e.g. 50,000) every 10s, 
+            # we reverse the list and stop as soon as we hit a record that is NOT from today.
             today = datetime.now().date()
-            new_logs_for_today = 0
             
             if attendance_records:
-                latest_record = attendance_records[-1]
-                # Debug print for first time to see if device time is wrong
-                if not hasattr(self, '_time_warned') or self._last_latest_time != latest_record.timestamp:
-                    print(f"[ZKTeco Debug] Total Logs: {len(attendance_records)}. Latest log time on device: {latest_record.timestamp}")
-                    self._time_warned = True
-                    self._last_latest_time = latest_record.timestamp
+                # 1. Check for Device Time Mismatch (Accuracy Fix)
+                device_time = attendance_records[-1].timestamp
+                server_time = datetime.now()
+                time_diff = abs((server_time - device_time).total_seconds())
+                
+                if time_diff > 300: # 5 minutes threshold
+                    logger.warning(f"TIME MISMATCH: Device time ({device_time}) differs from Server time ({server_time}) by {int(time_diff/60)} mins!")
+                    print(f"[ZKTeco Warning] Device clock is off by {int(time_diff/60)} minutes. Attendance might be recorded on wrong dates!")
 
-            for record in attendance_records:
-                if record.timestamp.date() == today:
-                    new_logs_for_today += 1
-                    self._process_single_punch(db, record)
+                # 2. Process today's records efficiently
+                # Reverse the records to see most recent first
+                for record in reversed(attendance_records):
+                    if record.timestamp.date() == today:
+                        self._process_single_punch(db, record)
+                    elif record.timestamp.date() < today:
+                        # Once we see a record from yesterday, we can safely stop 
+                        # because they are sorted chronologically.
+                        break
             
             # --- Device Memory Overflow Protection ---
             # Automatically clear ZKTeco device memory once logs exceed safe capacity (e.g. 80,000 logs limit)
@@ -156,9 +185,9 @@ class ZKTecoManager:
             from database import SystemSettings
             settings = db.query(SystemSettings).first()
             
-            in_time_obj = datetime.strptime("08:00", "%H:%M").time()
+            in_time_obj = datetime.strptime("08:30", "%H:%M").time()
             mid_time_obj = datetime.strptime("12:00", "%H:%M").time()
-            out_time_obj = datetime.strptime("17:00", "%H:%M").time()
+            out_time_obj = datetime.strptime("15:00", "%H:%M").time()
             
             if settings:
                 if getattr(settings, 'in_time', None):

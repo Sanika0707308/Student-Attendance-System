@@ -118,8 +118,6 @@ async function loadAttendance(dateStr = null) {
         const totalElems = parseInt(document.getElementById("total").innerText) || 0;
         document.getElementById("absent").innerText = Math.max(0, totalElems - uniqueStudentsPunched);
 
-        document.getElementById("absent").innerText = Math.max(0, totalElems - uniqueStudentsPunched);
-
     } catch (e) {
         console.error("Error loading attendance logs", e);
     }

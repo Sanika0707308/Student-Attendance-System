@@ -22,9 +22,10 @@ class Student(Base):
     zk_id = Column(String, unique=True, index=True) # ID inside the ZKTeco Machine
     parent_email = Column(String) # Replaced parent_phone with parent_email
     standard = Column(String, default="11th")
+    is_active = Column(Boolean, default=True)
 
-    # Relationship to attendance logs
-    attendances = relationship("Attendance", back_populates="student")
+    # Relationship to attendance logs (cascade ensures records are cleaned up when student is deleted)
+    attendances = relationship("Attendance", back_populates="student", cascade="all, delete-orphan")
 
 class Attendance(Base):
     __tablename__ = "attendance"

@@ -20,7 +20,7 @@ def test_student_registration_success(logged_in_students_page: StudentsPage):
     
     logged_in_students_page.register_student("John Doe", "1001", "parent@example.com")
     
-    expect(page.locator("#toast-container")).to_contain_text("Student successfully added!")
+    expect(page.locator("#toast-container")).to_contain_text("Student added successfully!")
     expect(logged_in_students_page.student_rows).to_have_count(1)
     expect(logged_in_students_page.student_rows.first).to_contain_text("John Doe")
 

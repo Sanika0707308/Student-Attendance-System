@@ -101,12 +101,12 @@ def retry_emails_task(log_ids: list):
         db_local.close()
 @router.get("/failed-emails/count")
 def get_failed_emails_count(db: Session = Depends(get_db)):
-    count = db.query(Attendance).filter(Attendance.email_sent == False).count()
+    count = db.query(Attendance).filter(Attendance.email_sent.is_(False)).count()
     return {"count": count}
 
 @router.post("/retry-emails")
 def retry_failed_emails(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    failed_logs = db.query(Attendance).filter(Attendance.email_sent == False).all()
+    failed_logs = db.query(Attendance).filter(Attendance.email_sent.is_(False)).all()
     count = len(failed_logs)
     if count == 0:
         return {"message": "No failed emails to retry", "count": 0}

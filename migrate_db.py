@@ -30,6 +30,12 @@ try:
 except Exception as e:
     print(f"Error adding standard: {e}")
 
+try:
+    cursor.execute('ALTER TABLE students ADD COLUMN is_active BOOLEAN DEFAULT 1')
+    print("Added is_active")
+except Exception as e:
+    print(f"Error adding is_active: {e}")
+
 conn.commit()
 conn.close()
 print("Migration done.")

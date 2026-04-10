@@ -5,9 +5,9 @@ class DashboardPage:
         self.page = page
         self.base_url = base_url
         self.title = page.locator("h1.page-title", has_text="Dashboard")
-        self.present_count = page.locator("#present-count")
-        self.absent_count = page.locator("#absent-count")
-        self.late_count = page.locator("#late-count")
+        self.present_count = page.locator("#present")
+        self.absent_count = page.locator("#absent")
+        self.total_count = page.locator("#total")
         
     def navigate(self):
         self.page.goto(f"{self.base_url}/static/dashboard.html")

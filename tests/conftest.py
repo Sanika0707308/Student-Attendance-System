@@ -34,8 +34,8 @@ def boot_test_server():
     """Start FastAPI server with hardware mocked securely"""
     setup_test_db()
     
-    # Mock pyzk globally for the test server thread
-    with mock.patch("zk.ZK", new=MockZK), mock.patch("zkteco_service.ZK", new=MockZK):
+    # Mock pyzk globally for the test server thread (all modules that import ZK)
+    with mock.patch("zk.ZK", new=MockZK), mock.patch("zkteco_service.ZK", new=MockZK), mock.patch("routers.settings.ZK", new=MockZK):
         server_thread = threading.Thread(target=run_server, daemon=True)
         server_thread.start()
         time.sleep(2)

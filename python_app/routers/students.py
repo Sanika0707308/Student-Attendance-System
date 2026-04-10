@@ -8,11 +8,22 @@ from database import get_db, Student
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
 # Pydantic models for validation
+from pydantic import BaseModel, Field, field_validator
+from typing import List
+
+# Pydantic models for validation
 class StudentCreate(BaseModel):
     name: str
-    zk_id: str
+    zk_id: str = Field(..., description="Numeric ID from the ZKTeco device")
     parent_email: str
     standard: str = "11th"
+
+    @field_validator('zk_id')
+    @classmethod
+    def validate_zk_id(cls, v: str) -> str:
+        if not v.isdigit():
+            raise ValueError('ZKTeco ID must contain only digits')
+        return v
 
 class StudentRead(StudentCreate):
     id: int

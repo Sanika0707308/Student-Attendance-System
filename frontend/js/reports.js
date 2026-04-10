@@ -67,7 +67,7 @@ async function loadReports() {
             document.getElementById("total-days").innerText = 0;
             document.getElementById("avg-attendance").innerText = "0%";
             document.getElementById("low-attendance").innerText = "0%";
-            document.getElementById("student-summary-body").innerHTML = "<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
+            document.getElementById("student-summary-body").innerHTML = "<tr><td colspan='5' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
             return;
         }
 
@@ -149,7 +149,7 @@ function renderTablePage(page) {
     tbody.innerHTML = "";
     
     if (processedStudents.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
         document.getElementById("btn-prev-page").style.display = "none";
         document.getElementById("btn-next-page").style.display = "none";
         document.getElementById("page-info").style.display = "none";
