@@ -3,7 +3,7 @@
 
 #define MyAppName "Institute Attendance System"
 #define MyAppVersion "1.0"
-#define MyAppPublisher "Your Institute Name"
+#define MyAppPublisher "Sanika"
 #define MyAppExeName "InstituteAttendance.exe"
 #define MyAppIcon "frontend\favicon.ico" 
 
@@ -31,8 +31,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; IMPORTANT: Build the python executable using `python build.py` first so the /dist folder exists before compiling this script.
-Source: "dist\InstituteAttendance\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\InstituteAttendance\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; Include the DLL if it is needed by the application
+Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
