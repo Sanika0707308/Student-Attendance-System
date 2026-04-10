@@ -37,12 +37,11 @@ class BackupManager:
                 
                 # Double check the filesystem to see if we already backed up today 
                 # (helps if app is restarted multiple times)
-                from database import DB_FILE
-                backup_dir = os.path.join(os.path.dirname(DB_FILE), "backups")
+                from config import DB_FILE, BACKUP_DIR
                 
                 already_exists = False
-                if os.path.exists(backup_dir):
-                    existing = os.listdir(backup_dir)
+                if os.path.exists(BACKUP_DIR):
+                    existing = os.listdir(BACKUP_DIR)
                     already_exists = any(f.startswith(f"attendance_backup_{today_str}") for f in existing)
 
                 if not already_exists:
@@ -56,20 +55,16 @@ class BackupManager:
     
     def _create_backup(self):
         """Copy attendance.db to a timestamped backup file."""
-        from database import DB_FILE
+        from config import DB_FILE, BACKUP_DIR
         
         if not os.path.exists(DB_FILE):
             logger.warning("Database file not found, skipping backup.")
             return
         
-        # Create backups directory next to the database file
-        backup_dir = os.path.join(os.path.dirname(DB_FILE), "backups")
-        os.makedirs(backup_dir, exist_ok=True)
-        
         # Timestamped backup filename
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         backup_filename = f"attendance_backup_{timestamp}.db"
-        backup_path = os.path.join(backup_dir, backup_filename)
+        backup_path = os.path.join(BACKUP_DIR, backup_filename)
         
         # Copy the database file
         shutil.copy2(DB_FILE, backup_path)
@@ -77,7 +72,7 @@ class BackupManager:
         print(f"[Backup] Database backed up: {backup_filename}")
         
         # Cleanup old backups (keep only last N)
-        self._cleanup_old_backups(backup_dir)
+        self._cleanup_old_backups(BACKUP_DIR)
     
     def _cleanup_old_backups(self, backup_dir):
         """Remove oldest backups if we exceed max_backups count."""

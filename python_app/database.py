@@ -1,11 +1,12 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from config import DB_FILE
 
 # Setup SQLite Database
 test_db = os.environ.get("TEST_DB_FILE")
-DB_FILE = test_db if test_db else os.path.join(os.path.dirname(__file__), "attendance.db")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_FILE}"
+actual_db_file = test_db if test_db else DB_FILE
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{actual_db_file}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}

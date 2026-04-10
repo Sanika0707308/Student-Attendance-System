@@ -11,8 +11,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # Configure logging to both console and file
-log_file = "app.log"
-handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+from config import LOG_FILE
+handler = RotatingFileHandler(LOG_FILE, maxBytes=10*1024*1024, backupCount=5)
 logging.basicConfig(
     format="%(message)s",
     level=logging.INFO,
@@ -90,7 +90,7 @@ class ZKTecoManager:
                 return # Can't connect without IP
                 
             ip_address = settings.zk_ip_address
-            zk = ZK(ip_address, port=self.port, timeout=5, password=0, force_udp=False, ommit_ping=False)
+            zk = ZK(ip_address, port=self.port, timeout=5, password=0, force_udp=False, ommit_ping=True)
             
             # We connect fresh each time to avoid dropping connection issues mid-day
             self.conn = zk.connect()

@@ -1,10 +1,17 @@
 import os
+import sys
 import threading
 import time
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+
+from config import get_base_path, LOG_FILE
+
+# FIX: In --noconsole mode, stdout is None. We must redirect it to prevent Uvicorn from crashing.
+sys.stdout = open(LOG_FILE, "a")
+sys.stderr = open(LOG_FILE, "a")
 
 from routers.students import router as students_router
 from routers.attendance import router as attendance_router
@@ -35,16 +42,7 @@ app.include_router(students_router)
 app.include_router(attendance_router)
 app.include_router(settings_router)
 
-import sys
-
-def get_base_path():
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.dirname(os.path.dirname(__file__))
-    return base_path
+from config import get_base_path
 
 # Mount frontend simple static files
 FRONTEND_DIR = os.path.join(get_base_path(), "frontend")
@@ -61,7 +59,7 @@ def run_server():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
 
 def on_closed():
-    print("PyWebView Window Closed. Exiting application...")
+    print("Application Window Closed. Shutting down system...")
     # Add any cleanup logic here, such as stopping scheduler
     os._exit(0)
 
@@ -73,15 +71,29 @@ if __name__ == "__main__":
     server_thread.start()
 
     # Wait briefly for server to start
-    time.sleep(1)
+    time.sleep(2)
 
-    print("Opening application in your default web browser...")
-    webbrowser.open("http://127.0.0.1:8000/")
-    
     try:
-        # Keep the main thread alive since we are no longer using pywebview's blocking loop
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
+        import webview
+        print("Opening application natively via pywebview...")
+        window = webview.create_window(
+            'Institute Attendance System', 
+            'http://127.0.0.1:8000/',
+            width=1200, 
+            height=800,
+            min_size=(900, 600)
+        )
+        window.events.closed += on_closed
+        webview.start()
+    except (ImportError, Exception) as e:
+        print(f"Native window failed to initialize: {e}")
+        print("Falling back to default Web Browser...")
+        webbrowser.open("http://127.0.0.1:8000/")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+    finally:
         print("Shutting down the server...")
         os._exit(0)

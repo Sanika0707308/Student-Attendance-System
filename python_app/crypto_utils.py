@@ -6,14 +6,15 @@ import os
 import base64
 import hashlib
 from cryptography.fernet import Fernet
+from config import KEY_FILE
 
 def _get_or_create_key() -> bytes:
     """
     Generate a machine-specific encryption key.
-    The key is derived from a secret file stored next to the database.
+    The key is derived from a secret file stored securely in AppData.
     If the file doesn't exist, a new key is generated.
     """
-    key_file = os.path.join(os.path.dirname(__file__), ".encryption_key")
+    key_file = KEY_FILE
     
     if os.path.exists(key_file):
         with open(key_file, "rb") as f:

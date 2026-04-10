@@ -83,7 +83,7 @@ def update_settings(req: SettingsUpdate, db: Session = Depends(get_db)):
 def test_connection(req: TestConnectionRequest):
     try:
         from zk import ZK
-        zk = ZK(req.zk_ip_address, port=4370, timeout=5, password=0, force_udp=False, ommit_ping=False)
+        zk = ZK(req.zk_ip_address, port=4370, timeout=5, password=0, force_udp=False, ommit_ping=True)
         conn = zk.connect()
         conn.disable_device()
         # Optionally, check device name or just disconnect
@@ -112,7 +112,7 @@ def clear_device_logs():
          return {"success": False, "message": "IP address not configured."}
          
     try:
-        zk = ZK(settings.zk_ip_address, port=4370, timeout=5, password=0, force_udp=False, ommit_ping=False)
+        zk = ZK(settings.zk_ip_address, port=4370, timeout=5, password=0, force_udp=False, ommit_ping=True)
         conn = zk.connect()
         conn.disable_device()
         conn.clear_attendance()
@@ -124,7 +124,7 @@ def clear_device_logs():
 
 from fastapi import UploadFile, File
 from fastapi.responses import FileResponse
-from database import DB_FILE
+from config import DB_FILE
 
 @router.get("/export-db")
 def export_db():
