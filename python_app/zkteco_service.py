@@ -38,7 +38,13 @@ def _send_email_async(student_id: int, punch_time: datetime, action: str):
     try:
         student = db.query(Student).filter(Student.id == student_id).first()
         if student:
-            success = send_email_notification(student.name, punch_time, student.parent_email, action)
+            time_diff = (datetime.now() - punch_time).total_seconds()
+            if time_diff > 86400: # Older than 24 hours
+                logger.info(f"Skipping stale email for {student.name} at {punch_time}")
+                success = True # Auto-mark as success so it doesn't stay pending
+            else:
+                success = send_email_notification(student.name, punch_time, student.parent_email, action)
+                
             att = db.query(Attendance).filter(
                 Attendance.student_id == student_id, 
                 Attendance.punch_time == punch_time
@@ -115,14 +121,19 @@ class ZKTecoManager:
                     logger.warning(f"TIME MISMATCH: Device time ({device_time}) differs from Server time ({server_time}) by {int(time_diff/60)} mins!")
                     print(f"[ZKTeco Warning] Device clock is off by {int(time_diff/60)} minutes. Attendance might be recorded on wrong dates!")
 
-                # 2. Process today's records efficiently
-                # Reverse the records to see most recent first
+                # 2. Process records efficiently while preventing offline data loss
+                from datetime import timedelta
+                # We process ALL logs from the last 5 days. 
+                # The DB existing_log check is extremely fast and will safely ignore duplicates.
+                # This guarantees we NEVER miss an offline punch, even if the app was restarted.
+                cutoff_time = datetime.now() - timedelta(days=5)
+
+                # Reverse the records to see most recent first. 
                 for record in reversed(attendance_records):
-                    if record.timestamp.date() == today:
+                    if record.timestamp >= cutoff_time:
                         self._process_single_punch(db, record)
-                    elif record.timestamp.date() < today:
-                        # Once we see a record from yesterday, we can safely stop 
-                        # because they are sorted chronologically.
+                    else:
+                        # Once we hit records older than 5 days, safely break to save CPU
                         break
             
             # --- Device Memory Overflow Protection ---
@@ -176,7 +187,7 @@ class ZKTecoManager:
                 Attendance.student_id == student.id
             ).order_by(Attendance.punch_time.desc()).first()
             
-            if last_punch and (punch_time - last_punch.punch_time) < timedelta(minutes=5):
+            if last_punch and abs((punch_time - last_punch.punch_time).total_seconds()) < 300:
                 logger.info(f"Ignored double-punch for {student.name} at {punch_time} (cooldown active)")
                 print(f"[ZKTeco Debug] Ignored double-punch for {student.name} at {punch_time} (cooldown active)")
                 return

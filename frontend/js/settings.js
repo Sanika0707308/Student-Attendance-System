@@ -1,4 +1,7 @@
-document.addEventListener("DOMContentLoaded", loadSettings);
+document.addEventListener("DOMContentLoaded", () => {
+    loadSettings();
+    loadHolidays();
+});
 
 async function loadSettings() {
     try {
@@ -11,6 +14,7 @@ async function loadSettings() {
             document.getElementById('in_time').value = data.in_time || '08:30';
             document.getElementById('mid_time').value = data.mid_time || '12:00';
             document.getElementById('out_time').value = data.out_time || '15:00';
+            document.getElementById('institute_name').value = data.institute_name || 'My Institute';
         }
     } catch (e) {
         console.error("Failed to load settings from server:", e);
@@ -26,6 +30,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     const in_time = document.getElementById('in_time').value;
     const mid_time = document.getElementById('mid_time').value;
     const out_time = document.getElementById('out_time').value;
+    const institute_name = document.getElementById('institute_name').value;
 
     try {
         const resp = await fetch('/api/settings', {
@@ -37,7 +42,8 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
                 smtp_password: smtp_password,
                 in_time: in_time,
                 mid_time: mid_time,
-                out_time: out_time
+                out_time: out_time,
+                institute_name: institute_name
             })
         });
 
@@ -149,3 +155,122 @@ document.getElementById('importDbFile').addEventListener('change', async (e) => 
         e.target.value = ''; // Reset input
     }
 });
+
+// --- Holiday Management ---
+async function loadHolidays() {
+    try {
+        const resp = await fetch('/api/holidays');
+        if (resp.ok) {
+            const holidays = await resp.json();
+            const tbody = document.getElementById('holidaysTableBody');
+            tbody.innerHTML = '';
+            
+            if (holidays.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:10px;">No holidays configured.</td></tr>';
+                return;
+            }
+
+            holidays.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding: 8px; border: 1px solid #ddd;">${h.date}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${h.description}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                        <button onclick="deleteHoliday(${h.id})" style="background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load holidays:", e);
+    }
+}
+
+document.getElementById('btnAddHoliday').addEventListener('click', async () => {
+    const date = document.getElementById('holiday_date').value;
+    const desc = document.getElementById('holiday_desc').value;
+
+    if (!date) {
+        window.showToast("Please select a date.", "error");
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: date, description: desc || 'Holiday' })
+        });
+
+        if (resp.ok) {
+            window.showToast("Holiday added!", "success");
+            document.getElementById('holiday_date').value = '';
+            document.getElementById('holiday_desc').value = '';
+            loadHolidays();
+        } else {
+            const err = await resp.json();
+            window.showToast(err.detail || "Failed to add holiday", "error");
+        }
+    } catch (e) {
+        console.error("Error adding holiday:", e);
+        window.showToast("Network error.", "error");
+    }
+});
+
+document.getElementById('btnAddHolidayRange').addEventListener('click', async () => {
+    const from_date = document.getElementById('holiday_from').value;
+    const to_date   = document.getElementById('holiday_to').value;
+    const desc      = document.getElementById('holiday_range_desc').value;
+
+    if (!from_date || !to_date) {
+        window.showToast("Please select both From and To dates.", "error");
+        return;
+    }
+    if (to_date < from_date) {
+        window.showToast("'To' date must be on or after 'From' date.", "error");
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/holidays/range', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_date, to_date, description: desc || 'Holiday' })
+        });
+
+        const data = await resp.json();
+        if (resp.ok) {
+            window.showToast(data.message, "success");
+            document.getElementById('holiday_from').value = '';
+            document.getElementById('holiday_to').value   = '';
+            document.getElementById('holiday_range_desc').value = '';
+            loadHolidays();
+        } else {
+            window.showToast(data.detail || "Failed to add holiday range", "error");
+        }
+    } catch (e) {
+        console.error("Error adding holiday range:", e);
+        window.showToast("Network error.", "error");
+    }
+});
+
+async function deleteHoliday(id) {
+    if (!confirm("Remove this holiday?")) return;
+
+    try {
+        const resp = await fetch(`/api/holidays/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (resp.ok) {
+            window.showToast("Holiday removed.", "success");
+            loadHolidays();
+        } else {
+            window.showToast("Failed to remove holiday.", "error");
+        }
+    } catch (e) {
+        console.error("Error deleting holiday:", e);
+    }
+}
+

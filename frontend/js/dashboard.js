@@ -6,17 +6,13 @@ async function loadDashboard() {
         const today = new Date().toISOString().split("T")[0];
         document.getElementById("attendance-date").value = today;
 
-        // Fetch Students
-        const studentsResp = await fetch('/api/students');
-        const students = await studentsResp.json();
-
-        document.getElementById("total").innerText = students.length;
-
         // Initial load
         loadAttendance(today);
         checkDeviceStatus();
 
-        // --- NEW: Auto-update feature every 10 seconds ---
+        // --- Auto-update every 10 seconds ---
+        // Student count is fetched inside loadAttendance() on every cycle so
+        // adding/removing students mid-day keeps the absent count accurate.
         setInterval(() => {
             const selectedDate = document.getElementById("attendance-date").value;
             const todayStr = new Date().toISOString().split("T")[0];
@@ -45,10 +41,18 @@ async function loadAttendance(dateStr = null) {
         const today = new Date().toISOString().split("T")[0];
         const targetDate = dateStr || today;
 
-        let url = `/api/attendance?date=${targetDate}`;
+        let url = `/api/attendance?date=${targetDate}&limit=10000`;
 
-        const resp = await fetch(url);
+        const [resp, studentsResp] = await Promise.all([
+            fetch(url),
+            fetch('/api/students')
+        ]);
         const logs = await resp.json();
+        const students = await studentsResp.json();
+
+        // Always keep total count fresh — adding/removing a student mid-day
+        // would show wrong absent counts if we cached this at page load only.
+        document.getElementById("total").innerText = students.length;
 
         const tbodyEl = document.querySelector('#attendance-table tbody');
         tbodyEl.innerHTML = "";
@@ -78,11 +82,23 @@ async function loadAttendance(dateStr = null) {
                 const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
 
                 const dateObj = new Date(firstPunch.punch_time);
-                const inTime = dateObj.toLocaleTimeString();
-                const outTime = lastPunch ? new Date(lastPunch.punch_time).toLocaleTimeString() : '--';
-
+                
                 // Use the last status as the effective status
                 const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
+
+                let inTime = '--';
+                let outTime = '--';
+                
+                if (punches.length === 1) {
+                    if (effectiveStatus === 'Left' || effectiveStatus === 'Left Early') {
+                        outTime = dateObj.toLocaleTimeString();
+                    } else {
+                        inTime = dateObj.toLocaleTimeString();
+                    }
+                } else {
+                    inTime = dateObj.toLocaleTimeString();
+                    outTime = new Date(lastPunch.punch_time).toLocaleTimeString();
+                }
                 const statusClass = effectiveStatus.toLowerCase().replace(/\s+/g, "-");
                 const badgeHtml = `<span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(effectiveStatus)}</span>`;
                 
@@ -123,6 +139,7 @@ async function loadAttendance(dateStr = null) {
     }
 }
 
+
 async function checkDeviceStatus() {
     try {
         const resp = await fetch('/api/settings/device-status');
@@ -158,8 +175,10 @@ async function updateFailedEmailsCount() {
         document.getElementById("emails-failed").innerText = count;
         if (count > 0) {
             document.getElementById("btn-retry-emails").style.display = "block";
+            document.getElementById("view-failed-emails").style.display = "block";
         } else {
             document.getElementById("btn-retry-emails").style.display = "none";
+            document.getElementById("view-failed-emails").style.display = "none";
         }
     } catch (e) {
         console.error("Error fetching failed emails count", e);
@@ -176,7 +195,7 @@ function escapeHtml(str) {
 
 // Background retry mechanism
 async function retryEmails() {
-    if (!confirm("Are you sure you want to retry sending all globally failed emails? This will process in the background.")) return;
+    if (!confirm("Are you sure you want to retry sending recent (≤24 h) failed emails? This will process in the background.")) return;
     
     const btn = document.getElementById("btn-retry-emails");
     btn.disabled = true;
@@ -206,4 +225,39 @@ async function retryEmails() {
         btn.disabled = false;
         btn.innerText = "Retry Sending";
     }
+}
+
+async function viewFailedEmails() {
+    const modal = document.getElementById("failedEmailsModal");
+    const tbody = document.getElementById("failed-emails-body");
+    tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>Loading...</td></tr>";
+    modal.style.display = "flex";
+
+    try {
+        const resp = await fetch('/api/attendance/failed-emails');
+        const logs = await resp.json();
+        
+        tbody.innerHTML = "";
+        if (logs.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; color: var(--text-muted);'>No failed emails found.</td></tr>";
+        } else {
+            logs.forEach(log => {
+                const tr = document.createElement("tr");
+                tr.style.borderBottom = "1px solid #f1f5f9";
+                tr.innerHTML = `
+                    <td style="padding:12px;">${escapeHtml(log.student_name)}</td>
+                    <td style="padding:12px;">${new Date(log.punch_time).toLocaleString()}</td>
+                    <td style="padding:12px;"><span class="status-badge" style="background:#fee2e2; color:#b91c1c;">Failed</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error("Error fetching failed emails list", e);
+        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; color: var(--danger);'>Error loading list.</td></tr>";
+    }
+}
+
+function closeFailedEmailsModal() {
+    document.getElementById("failedEmailsModal").style.display = "none";
 }

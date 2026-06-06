@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Institute Attendance System"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.9"
 #define MyAppPublisher "Sanika"
 #define MyAppExeName "InstituteAttendance.exe"
 #define MyAppIcon "frontend\favicon.ico" 
@@ -17,7 +17,7 @@ DefaultDirName={pf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Output the setup file directly to root
 OutputDir=.\
-OutputBaseFilename=AttendanceSystem_Setup_v1.0
+OutputBaseFilename=AttendanceSystem_Setup_v1.9
 SetupIconFile={#MyAppIcon}
 Compression=lzma
 SolidCompression=yes

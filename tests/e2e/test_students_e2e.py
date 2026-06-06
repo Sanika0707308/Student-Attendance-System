@@ -16,7 +16,8 @@ def test_student_registration_success(logged_in_students_page: StudentsPage):
     """Test registering a valid student via UI"""
     page = logged_in_students_page.page
     
-    expect(logged_in_students_page.student_rows).to_have_count(0)
+    expect(logged_in_students_page.student_rows).to_have_count(1)
+    expect(logged_in_students_page.student_rows.first).to_contain_text("No students enrolled")
     
     logged_in_students_page.register_student("John Doe", "1001", "parent@example.com")
     
@@ -43,4 +44,5 @@ def test_student_invalid_empty_fields(logged_in_students_page: StudentsPage):
     """Test registration block on missing fields"""
     logged_in_students_page.register_student("", "", "")
     # Should not trigger API success or show in table
-    expect(logged_in_students_page.student_rows).to_have_count(0)
+    expect(logged_in_students_page.student_rows).to_have_count(1)
+    expect(logged_in_students_page.student_rows.first).to_contain_text("No students enrolled")

@@ -28,8 +28,8 @@ async function loadAttendance() {
     const selectedStandard = document.getElementById("attendance-standard") ? document.getElementById("attendance-standard").value : "All";
     
     try {
-        let url = '/api/attendance';
-        if (selectedDate) url += `?date=${selectedDate}`;
+        let url = '/api/attendance?limit=10000';
+        if (selectedDate) url += `&date=${selectedDate}`;
         const resp = await fetch(url);
         const logs = await resp.json();
 
@@ -62,12 +62,23 @@ async function loadAttendance() {
             const firstPunch = punches[0];
             const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
 
-            const inTime = new Date(firstPunch.punch_time).toLocaleTimeString();
-            const outTime = lastPunch ? new Date(lastPunch.punch_time).toLocaleTimeString() : '--';
-
             // Use the last status as the effective status
             const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
             const standard = firstPunch.standard || "11th";
+
+            let inTime = '--';
+            let outTime = '--';
+            
+            if (punches.length === 1) {
+                if (effectiveStatus === 'Left' || effectiveStatus === 'Left Early') {
+                    outTime = new Date(firstPunch.punch_time).toLocaleTimeString();
+                } else {
+                    inTime = new Date(firstPunch.punch_time).toLocaleTimeString();
+                }
+            } else {
+                inTime = new Date(firstPunch.punch_time).toLocaleTimeString();
+                outTime = new Date(lastPunch.punch_time).toLocaleTimeString();
+            }
 
             if (selectedStatus !== "All" && effectiveStatus !== selectedStatus) {
                 return;

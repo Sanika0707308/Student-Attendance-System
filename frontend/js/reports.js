@@ -1,6 +1,7 @@
 let allAttendanceLogs = [];
 let processedStudents = [];
 let currentPage = 1;
+let instituteName = "My Institute";
 const PAGE_SIZE = 50;
 document.addEventListener("DOMContentLoaded", () => {
     // Set default month to current month
@@ -31,10 +32,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadReports() {
     const month = document.getElementById("report-month").value || "";
-    document.getElementById("table-report-title").innerText = `Student Attendance Report (${month})`;
+    
+    // Fetch settings to get institute name
+    try {
+        const settingsResp = await fetch('/api/settings');
+        if (settingsResp.ok) {
+            const settings = await settingsResp.json();
+            instituteName = settings.institute_name || "My Institute";
+        }
+    } catch (e) {
+        console.error("Failed to load institute name", e);
+    }
+
+    document.getElementById("table-report-title").innerText = `${instituteName} - Attendance Report (${month})`;
     
     try {
-        let url = '/api/attendance?limit=1000';
+        let url = '/api/attendance?limit=100000';
         if (month) {
             url += `&month=${month}`;
         }
@@ -213,6 +226,7 @@ function downloadCSV() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += csvQuote(instituteName) + "\n";
     csvContent += "ZK ID,Student Name,Standard,Days Present,Attendance %\n";
 
     data.forEach(row => {
@@ -249,11 +263,13 @@ function downloadPDF() {
     const standard = document.getElementById("report-standard").value;
 
     doc.setFontSize(18);
-    doc.text("Student Attendance Monthly Summary", 14, 20);
+    doc.text(instituteName, 14, 20);
+    doc.setFontSize(14);
+    doc.text("Student Attendance Monthly Summary", 14, 28);
 
     doc.setFontSize(11);
-    doc.text(`Report Month: ${month}    |    Standard: ${standard}`, 14, 28);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 34);
+    doc.text(`Report Month: ${month}    |    Standard: ${standard}`, 14, 36);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 42);
 
     const tableColumn = ["ZK ID", "Student Name", "Standard", "Days Present", "Attendance %"];
     const tableRows = [];
@@ -271,7 +287,7 @@ function downloadPDF() {
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
-        startY: 40,
+        startY: 48,
         theme: 'striped',
         styles: { fontSize: 10 },
         headStyles: { fillColor: [44, 62, 80] }

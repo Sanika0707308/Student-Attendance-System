@@ -1,5 +1,4 @@
 import os
-import shutil
 import threading
 import time
 from datetime import datetime
@@ -54,7 +53,16 @@ class BackupManager:
             time.sleep(1800)
     
     def _create_backup(self):
-        """Copy attendance.db to a timestamped backup file."""
+        """
+        Create a safe atomic backup of attendance.db using SQLite's VACUUM INTO.
+        
+        IMPORTANT: We use VACUUM INTO instead of shutil.copy2() because:
+        - shutil.copy2() copies raw bytes and can snapshot the file mid-write,
+          producing a corrupt backup if ZKTeco polling writes at the same time.
+        - VACUUM INTO is an atomic SQLite operation that waits for all pending writes,
+          produces a clean defragmented copy, and is always fully consistent.
+        """
+        import sqlite3
         from config import DB_FILE, BACKUP_DIR
         
         if not os.path.exists(DB_FILE):
@@ -66,10 +74,17 @@ class BackupManager:
         backup_filename = f"attendance_backup_{timestamp}.db"
         backup_path = os.path.join(BACKUP_DIR, backup_filename)
         
-        # Copy the database file
-        shutil.copy2(DB_FILE, backup_path)
-        logger.info(f"Database backed up successfully: {backup_filename}")
-        print(f"[Backup] Database backed up: {backup_filename}")
+        # Use SQLite VACUUM INTO for a safe, atomic backup (works even under concurrent writes)
+        try:
+            conn = sqlite3.connect(DB_FILE, timeout=10)
+            conn.execute(f"VACUUM INTO '{backup_path}'")
+            conn.close()
+            logger.info(f"Database backed up successfully (VACUUM INTO): {backup_filename}")
+            print(f"[Backup] Database backed up: {backup_filename}")
+        except Exception as e:
+            logger.error(f"VACUUM INTO backup failed: {e}. Skipping this backup cycle.")
+            # Do NOT fall back to shutil.copy2 — a corrupt backup is worse than no backup
+            return
         
         # Cleanup old backups (keep only last N)
         self._cleanup_old_backups(BACKUP_DIR)

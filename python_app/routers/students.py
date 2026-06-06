@@ -25,6 +25,18 @@ class StudentCreate(BaseModel):
             raise ValueError('ZKTeco ID must contain only digits')
         return v
 
+    @field_validator('parent_email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        import re
+        # Basic but strict email format check: local@domain.tld
+        # Prevents malformed addresses like 'test@', 'abc123', '@domain.com'
+        # that would silently fail on every SMTP send and clog the failed-emails queue.
+        pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v.strip()):
+            raise ValueError('Invalid email address format. Use format: name@domain.com')
+        return v.strip().lower()
+
 class StudentRead(StudentCreate):
     id: int
 
@@ -32,7 +44,7 @@ class StudentRead(StudentCreate):
         from_attributes = True
 
 @router.get("/", response_model=List[StudentRead])
-def get_students(standard: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_students(standard: str = None, skip: int = 0, limit: int = 100000, db: Session = Depends(get_db)):
     query = db.query(Student)
     if standard:
         query = query.filter(Student.standard == standard)

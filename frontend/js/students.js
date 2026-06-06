@@ -166,7 +166,7 @@ async function deleteStudent(id) {
     // First, check how many attendance records this student has
     let recordCount = 0;
     try {
-        const countResp = await fetch(`/api/attendance?student_id=${id}&limit=1000`);
+        const countResp = await fetch(`/api/attendance?student_id=${id}&limit=100000`);
         if (countResp.ok) {
             const records = await countResp.json();
             recordCount = records.length;

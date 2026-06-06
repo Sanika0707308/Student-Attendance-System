@@ -23,8 +23,14 @@
 
             <form id="settingsForm">
                 <div style="margin-bottom: 20px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">ZKTeco K40 Pro IP
-                        Address</label>
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">Institute Name</label>
+                    <input type="text" id="institute_name" class="input-field" placeholder="e.g. ABC Public School"
+                        style="width: 100%;">
+                    <small style="color: gray;">This name will appear on all reports and downloads.</small>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">ZKTeco K40 Pro IP Address</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" id="zk_ip_address" class="input-field" placeholder="e.g. 192.168.1.100"
                             style="flex: 1;">
@@ -97,6 +103,49 @@
                         ZKTeco Logs</button>
                     <p id="wipeMessage" style="margin-top: 5px; font-weight: bold; font-size: 0.9em;"></p>
                 </div>
+                <div style="margin-top: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa;">
+                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">🏖️ Holiday Management</h4>
+                    <small style="color: gray; display: block; margin-bottom: 15px;">Add specific dates where students should not be marked absent automatically.</small>
+                    
+                    <!-- Single date row -->
+                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;">Single Day</p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <input type="date" id="holiday_date" class="input-field" style="flex: 1; min-width: 140px;">
+                        <input type="text" id="holiday_desc" class="input-field" placeholder="e.g. Diwali" style="flex: 2; min-width: 160px;">
+                        <button type="button" id="btnAddHoliday" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Holiday</button>
+                    </div>
+
+                    <!-- Date range row -->
+                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;">Date Range</p>
+                    <div style="margin-bottom: 15px;">
+                        <!-- Row 1: From / To dates -->
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                            <label style="white-space: nowrap; font-size: 0.85em; color: #555; font-weight: bold;">From</label>
+                            <input type="date" id="holiday_from" class="input-field" style="flex: 1; min-width: 140px;">
+                            <label style="white-space: nowrap; font-size: 0.85em; color: #555; font-weight: bold;">To</label>
+                            <input type="date" id="holiday_to" class="input-field" style="flex: 1; min-width: 140px;">
+                        </div>
+                        <!-- Row 2: Description + button -->
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="holiday_range_desc" class="input-field" placeholder="e.g. Summer Vacation" style="flex: 1; min-width: 200px;">
+                            <button type="button" id="btnAddHolidayRange" style="padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Range</button>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #eee;">
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Date</th>
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Description</th>
+                                <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holidaysTableBody">
+                            <!-- Holidays dynamically populated here -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <div style="margin-top: 30px; padding: 20px; border: 1px dashed var(--primary); border-radius: 8px; background-color: #f0f9ff;">
                     <h4 style="color: var(--primary); margin-bottom: 5px;">💾 Database Management</h4>
                     <small style="color: gray; display: block; margin-bottom: 10px;">Import or Export the entire application database. Importing a database will overwrite current data.</small>
@@ -112,8 +161,8 @@
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=3"></script>
-    <script src="js/settings.js?v=3"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script src="js/settings.js?v=4"></script>
 </body>
 
 </html>

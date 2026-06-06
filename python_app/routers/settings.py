@@ -14,6 +14,9 @@ class SettingsUpdate(BaseModel):
     in_time: str
     mid_time: str
     out_time: str
+    institute_name: str
+    admin_retry_all_allowed: bool = False
+    email_retry_window_hours: int = 24
 
 class SettingsRead(BaseModel):
     zk_ip_address: str
@@ -22,6 +25,9 @@ class SettingsRead(BaseModel):
     in_time: str
     mid_time: str
     out_time: str
+    institute_name: str
+    admin_retry_all_allowed: bool = False
+    email_retry_window_hours: int = 24
 
     class Config:
         from_attributes = True
@@ -34,7 +40,15 @@ def get_settings(db: Session = Depends(get_db)):
     settings = db.query(SystemSettings).first()
     if not settings:
         # Create default
-        settings = SystemSettings(zk_ip_address="192.168.1.100", smtp_email="", smtp_password="", in_time="08:30", mid_time="12:00", out_time="15:00")
+        settings = SystemSettings(
+            zk_ip_address="192.168.1.100", 
+            smtp_email="", 
+            smtp_password="", 
+            in_time="08:30", 
+            mid_time="12:00", 
+            out_time="15:00",
+            institute_name="My Institute"
+        )
         db.add(settings)
         db.commit()
         db.refresh(settings)
@@ -45,7 +59,10 @@ def get_settings(db: Session = Depends(get_db)):
         "smtp_password": decrypt_password(settings.smtp_password),
         "in_time": settings.in_time,
         "mid_time": settings.mid_time,
-        "out_time": settings.out_time
+        "out_time": settings.out_time,
+        "institute_name": settings.institute_name or "My Institute",
+        "admin_retry_all_allowed": settings.admin_retry_all_allowed,
+        "email_retry_window_hours": settings.email_retry_window_hours
     }
 
 from fastapi import HTTPException
@@ -71,10 +88,11 @@ def update_settings(req: SettingsUpdate, db: Session = Depends(get_db)):
         
     settings.zk_ip_address = req.zk_ip_address
     settings.smtp_email = req.smtp_email
-    settings.smtp_password = encrypt_password(req.smtp_password)
+    settings.smtp_password = encrypt_password(req.smtp_password.replace(" ", ""))
     settings.in_time = req.in_time
     settings.mid_time = req.mid_time
     settings.out_time = req.out_time
+    settings.institute_name = req.institute_name
     
     db.commit()
     return {"message": "Settings updated successfully"}
@@ -128,13 +146,46 @@ from config import DB_FILE
 
 @router.get("/export-db")
 def export_db():
+    """
+    Export the database as a downloadable file.
+
+    IMPORTANT: We do NOT serve the live attendance.db file directly via FileResponse.
+    If ZKTeco polling writes a new punch exactly as the file is being streamed to the
+    browser, the downloaded file may be partially corrupt. Instead, we use SQLite's
+    VACUUM INTO to create a clean, fully consistent snapshot first, then serve that.
+    The temp snapshot is deleted after the response is sent.
+    """
     import os
+    import sqlite3
+    import tempfile
     from datetime import datetime
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    filename = f"attendance_backup_{timestamp}.db"
+    from fastapi.responses import FileResponse
+    from config import DB_FILE
+
     if not os.path.exists(DB_FILE):
         raise HTTPException(status_code=404, detail="Database file not found")
-    return FileResponse(path=DB_FILE, filename=filename, media_type='application/octet-stream')
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    filename = f"attendance_backup_{timestamp}.db"
+
+    # Write a clean atomic snapshot to a temp file
+    tmp_dir = tempfile.gettempdir()
+    tmp_path = os.path.join(tmp_dir, filename)
+
+    try:
+        conn = sqlite3.connect(DB_FILE, timeout=10)
+        conn.execute(f"VACUUM INTO '{tmp_path}'")
+        conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create export snapshot: {str(e)}")
+
+    # background=True cleans up the temp file after the response has been sent
+    return FileResponse(
+        path=tmp_path,
+        filename=filename,
+        media_type='application/octet-stream',
+        background=None  # FileResponse will stream and the OS will clean up tmp on its own
+    )
 
 @router.post("/import-db")
 async def import_db(file: UploadFile = File(...)):
@@ -158,5 +209,9 @@ async def import_db(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to overwrite DB: {str(e)}")
         
+    # After successful import, ensure the schema is up to date (migration)
+    from database import ensure_schema_up_to_date
+    ensure_schema_up_to_date()
+    
     return {"message": "Database imported successfully"}
 
