@@ -3,8 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Attendance</title>
-    <link rel="stylesheet" href="css/style.css?v=30">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="nav.attendance">Attendance</title>
+    <link rel="stylesheet" href="css/style.css?v=10">
+    <script src="js/i18n.js?v=1"></script>
 </head>
 
 <body>
@@ -12,43 +14,42 @@
     <app-sidebar></app-sidebar>
 
     <div class="main">
-        <h1 class="page-title">Attendance</h1>
-
-        <!-- INFO CARDS -->
-        <div class="cards">
-            <div class="card">
-                <p>Total Students</p>
-                <h2 id="total-students-count">—</h2>
-            </div>
-            <div class="card present">
-                <p>Present</p>
-                <h2 id="present-count">—</h2>
-            </div>
-            <div class="card absent">
-                <p>Absent</p>
-                <h2 id="absent-count">—</h2>
-            </div>
-        </div>
+        <h1 class="page-title" data-i18n="att.title">Attendance</h1>
 
         <div class="table-box">
             <div class="table-header">
-                <h3 id="table-date-header">Today's Attendance</h3>
-
-                <div class="filters-box" style="display: flex; gap: 20px;">
+                <h3 data-i18n="att.today">Today's Attendance</h3>
+                <div class="filters-container" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div class="status-box">
+                        <label for="attendance-status" style="margin-right: 5px;"><span data-i18n="common.status">Status</span>:</label>
+                        <select id="attendance-status" onchange="filterAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                            <option value="All" data-i18n="common.all">All</option>
+                            <option value="Present" data-i18n="status.Present">Present</option>
+                            <option value="Late" data-i18n="status.Late">Late</option>
+                            <option value="Left Early" data-i18n="status.LeftEarly">Left Early</option>
+                            <option value="Left" data-i18n="status.Left">Left</option>
+                            <option value="Absent" data-i18n="status.Absent">Absent</option>
+                        </select>
+                    </div>
                     <div class="date-box">
-                        <label for="attendance-date">Select Date:</label>
+                        <label for="attendance-date" style="margin-right: 5px;"><span data-i18n="common.selectDate">Select Date</span>:</label>
                         <input type="date" id="attendance-date" onchange="filterAttendance()">
                     </div>
-
-                    <div class="status-filter-box">
-                        <label for="status-filter">Status:</label>
-                        <select id="status-filter" onchange="filterAttendance()">
-                            <option value="all">All Status</option>
-                            <option value="In Time">In Time</option>
-                            <option value="Late">Late</option>
-                            <option value="Departure">Departure</option>
-                            <option value="Absent">Absent</option>
+                    <div class="standard-box">
+                        <label for="attendance-standard" style="margin-right: 5px;"><span data-i18n="common.standard">Standard</span>:</label>
+                        <!-- Options are filled by populateStandardSelects() in sidebar.js from
+                             the class list configured in Settings. -->
+                        <select id="attendance-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All"
+                            onchange="filterAttendance()"
+                            style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                            <option value="All" data-i18n="common.all">All</option>
                         </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; border-left: 1px solid var(--border-color); padding-left: 15px;">
+                        <button id="btn-add-record" class="btn btn-primary" style="padding: 7px 16px;" data-i18n="att.addCorrect">+ Add / Correct</button>
+                        <button id="btn-export-daily-xlsx" class="btn" style="background-color: #1d6f42; color: #fff; padding: 7px 16px;" data-i18n="att.excel">Excel</button>
+                        <button id="btn-export-daily-csv" class="btn" style="background-color: #17a2b8; color: #fff; padding: 7px 16px;" data-i18n="att.csv">CSV</button>
+                        <button id="btn-export-daily-pdf" class="btn" style="background-color: #dc3545; color: #fff; padding: 7px 16px;" data-i18n="att.pdf">PDF</button>
                     </div>
                 </div>
             </div>
@@ -56,26 +57,88 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Student Name</th>
-                        <th>IN Time</th>
-                        <th>OUT Time</th>
-                        <th>Status</th>
+                        <th data-i18n="common.studentName">Student Name</th>
+                        <th data-i18n="common.standard">Standard</th>
+                        <th data-i18n="common.inTime">IN Time</th>
+                        <th data-i18n="common.outTime">OUT Time</th>
+                        <th data-i18n="common.status">Status</th>
+                        <th data-i18n="common.actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="attendance-table-body">
-                    <tr>
-                        <td colspan="4" style="text-align:center; color: var(--text-muted);">
-                            Loading...
-                        </td>
-                    </tr>
+                    <tr><td colspan="6" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=30"></script>
-    <script src="js/attendance.js?v=30"></script>
+    <!-- ── Add / correct a record ──────────────────────────────────────────── -->
+    <!-- The device is the source of truth on a normal day, but it misses punches
+         and the absence daemon can mark a student Absent who was actually there.
+         Until 2.0 there was no way to fix either. -->
+    <div class="modal-backdrop" id="record-modal">
+        <div class="modal-panel">
+            <h3 id="record-modal-title" data-i18n="att.modalAdd">Add Attendance Record</h3>
+            <p class="modal-hint" id="record-modal-hint" data-i18n-html="att.modalHint">
+                Use this for a punch the device missed, or to correct a wrong entry.
+                Records added here are marked <strong>Manual</strong> so they stay traceable.
+            </p>
 
+            <form id="record-form" onsubmit="saveRecord(event)">
+                <input type="hidden" id="record-id" value="">
+
+                <div class="form-row" id="record-student-row">
+                    <label for="record-student" data-i18n="common.student">Student</label>
+                    <select id="record-student" class="input-field" required>
+                        <option value="" data-i18n="att.loadingStudents">Loading students…</option>
+                    </select>
+                </div>
+
+                <div class="form-row" id="record-student-fixed-row" style="display:none;">
+                    <label data-i18n="common.student">Student</label>
+                    <p id="record-student-fixed" style="font-weight:600; font-size:15px;"></p>
+                </div>
+
+                <div style="display:flex; gap:12px;">
+                    <div class="form-row" style="flex:1;">
+                        <label for="record-date" data-i18n="common.date">Date</label>
+                        <input type="date" id="record-date" class="input-field" required>
+                    </div>
+                    <div class="form-row" style="flex:1;">
+                        <label for="record-time" data-i18n="common.time">Time</label>
+                        <input type="time" id="record-time" class="input-field" step="60" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <label for="record-status" data-i18n="common.status">Status</label>
+                    <select id="record-status" class="input-field" required>
+                        <option value="Present" data-i18n="status.Present">Present</option>
+                        <option value="Late" data-i18n="status.Late">Late</option>
+                        <option value="Left Early" data-i18n="status.LeftEarly">Left Early</option>
+                        <option value="Left" data-i18n="status.Left">Left</option>
+                        <option value="Absent" data-i18n="status.Absent">Absent</option>
+                    </select>
+                </div>
+
+                <label class="checkbox-row">
+                    <input type="checkbox" id="record-notify">
+                    <span data-i18n="att.notifyLabel">Email the parent about this record. Leave unchecked for a silent
+                        correction — useful when fixing an old entry nobody needs to hear about.</span>
+                </label>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeRecordModal()" data-i18n="common.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="record-save-btn" data-i18n="att.saveRecord">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/jspdf.umd.min.js"></script>
+    <script src="js/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/attendance.js?v=7"></script>
 </body>
 
 </html>

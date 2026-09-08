@@ -1,16 +1,46 @@
-<<<<<<< HEAD
-document.addEventListener("DOMContentLoaded", () => {
-    loadStudents();
-=======
-let currentStudentId = null;
-let currentStudentName = "";
-let currentStudentZkId = "";
-let currentStudentEmail = "";
+// i18n.js is loaded before this file on every page that uses it, but each lookup
+// carries its English fallback so a stale cached copy after an upgrade cannot
+// leave the page full of raw key names.
+function tr(key, english) {
+    return typeof window.t === "function" ? window.t(key, english) : english;
+}
+
+function trf(key, vars, english) {
+    if (typeof window.tf === "function") return window.tf(key, vars, english);
+    let out = english || key;
+    Object.keys(vars || {}).forEach(name => {
+        out = out.split("{" + name + "}").join(String(vars[name]));
+    });
+    return out;
+}
+
+/**
+ * Status wording for the screen.
+ *
+ * Exports keep the English word regardless of the interface language: jsPDF has
+ * no Devanagari font and no complex-script shaping, so a Marathi status in a PDF
+ * comes out as boxes. Every status cell therefore carries the English value in
+ * `data-status-en`, and the PDF builder reads that attribute instead of the
+ * visible text.
+ */
+function displayStatus(status) {
+    return typeof window.tStatus === "function" ? window.tStatus(status) : status;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     loadStudents();
-    populateYearDropdown();
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
+    wireRosterImportExport();
+    wireClassTools();
+    loadClassCounts();
+
+    // Auto-fill gmail.com helper (only triggers on blur, not every keystroke)
+    const autoFillGmail = function() {
+        if (this.value.endsWith("@")) {
+            this.value += "gmail.com";
+        }
+    };
+    document.getElementById("parent_email").addEventListener("change", autoFillGmail);
+    document.getElementById("edit_parent_email").addEventListener("change", autoFillGmail);
 
     document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -18,421 +48,999 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = document.getElementById("student_name").value;
         const zk_id = document.getElementById("zk_id").value;
         const parent_email = document.getElementById("parent_email").value;
+        const standard = document.getElementById("standard").value;
+
+        // Front-end numeric check for ZK ID
+        if (!/^\d+$/.test(zk_id)) {
+            window.showToast(tr("students.zkNumeric", "ZKTeco ID must be numeric only."), "error");
+            return;
+        }
+
+        // Front-end duplicate checks
+        const existingStudents = window.cachedStudents || [];
+
+        const nameCount = existingStudents.filter(s => s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
+        const emailCount = existingStudents.filter(s => s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
+
+        if (nameCount >= 2) {
+            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+            return;
+        }
+
+        if (emailCount >= 2) {
+            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+            return;
+        }
 
         try {
-            const resp = await fetch('/api/students', {
+            const resp = await window.apiFetch('/api/students', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, zk_id, parent_email })
+                body: JSON.stringify({ name, zk_id, parent_email, standard })
             });
 
             if (resp.ok) {
-                window.showToast("Student added successfully!", "success");
+                window.showToast(tr("students.added", "Student added successfully!"), "success");
                 document.getElementById("addStudentForm").reset();
                 loadStudents();
+                loadClassCounts();
             } else {
                 const data = await resp.json();
-                window.showToast("Failed: " + (data.detail || "Unknown error"), "error");
+                window.showToast(tr("students.failedPrefix", "Failed") + ": " +
+                    (window.describeApiError(data.detail) || tr("students.unknownError", "Unknown error")), "error");
             }
         } catch (err) {
             console.error(err);
-            window.showToast("Network error while adding student.", "error");
+            window.showToast(tr("students.networkAdd", "Network error while adding student."), "error");
         }
     });
-<<<<<<< HEAD
-});
 
-=======
+    document.getElementById("editStudentForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-    // Handle month/year changes in modal
-    document.getElementById("report-month").addEventListener("change", updatePersonalStats);
-    document.getElementById("report-year").addEventListener("change", updatePersonalStats);
+        const id = document.getElementById("edit_student_id").value;
+        const name = document.getElementById("edit_student_name").value;
+        const zk_id = document.getElementById("edit_zk_id").value;
+        const parent_email = document.getElementById("edit_parent_email").value;
+        const standard = document.getElementById("edit_standard").value;
 
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById("attendance-modal");
-        if (event.target == modal) {
-            closeAttendanceModal();
-        }
-    }
-});
-
-
-async function updatePersonalStats() {
-    if (!currentStudentZkId) return;
-    const month = document.getElementById("report-month").value;
-    const year = document.getElementById("report-year").value;
-    
-    try {
-        const resp = await fetch(`/api/attendance?limit=5000`);
-        const allLogs = await resp.json();
-        
-        const studentLogs = allLogs.filter(log => {
-            const logDate = new Date(log.punch_time);
-            return String(log.student_zk_id) === String(currentStudentZkId) && 
-                   (logDate.getMonth() + 1) === parseInt(month) && 
-                   logDate.getFullYear() === parseInt(year);
-        });
-        
-        // Group by date to get unique present days
-        const logsByDate = new Set();
-        studentLogs.forEach(l => {
-            if (l.status !== 'Absent') {
-                logsByDate.add(new Date(l.punch_time).toDateString());
-            }
-        });
-        const presentDays = logsByDate.size;
-        
-        // Use current date for total days comparison if looking at current month
-        const now = new Date();
-        let totalDaysToCount;
-        if (parseInt(year) === now.getFullYear() && parseInt(month) === (now.getMonth() + 1)) {
-            totalDaysToCount = now.getDate(); // Only count up to today
-        } else {
-            totalDaysToCount = new Date(year, month, 0).getDate(); // Full month
-        }
-        
-        const presentPercent = totalDaysToCount > 0 ? Math.round((presentDays / totalDaysToCount) * 100) : 0;
-        const absentPercent = 100 - presentPercent;
-        
-        const logsContainer = document.getElementById("modal-logs-container");
-        const logsBody = document.getElementById("modal-logs-body");
-        const summaryStats = document.getElementById("student-summary-stats");
- 
-        document.getElementById("personal-present-percent").innerText = presentPercent + "%";
-        document.getElementById("personal-absent-percent").innerText = absentPercent + "%";
-
-        if (summaryStats) {
-            summaryStats.style.display = studentLogs.length === 0 ? "none" : "flex";
+        // Front-end numeric check for ZK ID
+        if (!/^\d+$/.test(zk_id)) {
+            window.showToast(tr("students.zkNumeric", "ZKTeco ID must be numeric only."), "error");
+            return;
         }
 
-        if (logsContainer) {
-            logsContainer.style.display = "block";
-            logsBody.innerHTML = "";
-            
-            if (studentLogs.length === 0) {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td colspan="4" style="text-align:center; padding: 25px; color: #94a3b8; font-style: italic;">No attendance records found for this period.</td>`;
-                logsBody.appendChild(tr);
+        // Front-end duplicate checks excluding the student being edited
+        const existingStudents = window.cachedStudents || [];
+
+        const nameCount = existingStudents.filter(s => s.id != id && s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
+        const emailCount = existingStudents.filter(s => s.id != id && s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
+
+        if (nameCount >= 2) {
+            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+            return;
+        }
+
+        if (emailCount >= 2) {
+            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+            return;
+        }
+
+        if (!window.confirmTwice(
+            tr("students.confirmUpdate", "Are you sure you want to update this student's details?"),
+            tr("students.confirmUpdateAgain", "Please confirm again to save these student details."))) {
+            return;
+        }
+
+        try {
+            const resp = await window.apiFetch(`/api/students/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, zk_id, parent_email, standard })
+            });
+
+            if (resp.ok) {
+                window.showToast(tr("students.updated", "Student updated successfully!"), "success");
+                closeEditStudentModal();
+                loadStudents();
+                loadClassCounts();
             } else {
-                // Group by date for the table
-                const logsByDate = {};
-                studentLogs.forEach(log => {
-                    const dateStr = new Date(log.punch_time).toDateString();
-                    if (!logsByDate[dateStr]) logsByDate[dateStr] = [];
-                    logsByDate[dateStr].push(log);
-                });
-
-                logsBody.innerHTML = "";
-                // Sort dates descending (latest first)
-                Object.keys(logsByDate).sort((a,b) => new Date(b) - new Date(a)).forEach(dateStr => {
-                    const punches = logsByDate[dateStr];
-                    punches.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
-                    
-                    const firstPunch = punches[0];
-                    const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
-                    const effectiveStatus = (lastPunch ? lastPunch.status : firstPunch.status) || "Absent";
-                    
-                    // Robust check: Mask if status is "Absent" OR if the time is exactly 12:30 (the common system default)
-                    const punchTime = new Date(firstPunch.punch_time);
-                    const is1230 = punchTime.getHours() === 12 && punchTime.getMinutes() === 30;
-                    const isAbsent = effectiveStatus.trim().toLowerCase() === "absent" || is1230;
-
-                    const inTime = isAbsent ? '--' : punchTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const outTime = (lastPunch && !isAbsent && lastPunch !== firstPunch) ? new Date(lastPunch.punch_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--';
-
-                    const tr = document.createElement("tr");
-                    tr.style.borderBottom = "1px solid #f1f5f9";
-                    tr.innerHTML = `
-                        <td style="padding: 12px 15px; color: #475569; font-weight: 500;">${new Date(dateStr).toLocaleDateString('en-GB', {day:'2-digit', month:'short'})}</td>
-                        <td style="padding: 12px 15px; color: #0f172a; font-weight: 600;">${inTime}</td>
-                        <td style="padding: 12px 15px; color: #0f172a; font-weight: 600;">${outTime}</td>
-                        <td style="padding: 12px 15px;">
-                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; 
-                                ${!isAbsent && effectiveStatus === 'Present' ? 'background: #ecfdf5; color: #059669;' : 
-                                  isAbsent ? 'background: #fef2f2; color: #dc2626;' : 
-                                  effectiveStatus === 'Late' ? 'background: #fffbeb; color: #d97706;' : 
-                                  'background: #eff6ff; color: #2563eb;'}">
-                                ${!isAbsent && effectiveStatus === 'Present' ? 'In Time' : 
-                                  !isAbsent && (effectiveStatus === 'Left' || effectiveStatus === 'Left Early') ? 'Departure' : 
-                                  isAbsent ? 'Absent' : effectiveStatus}
-                            </span>
-                        </td>
-                    `;
-                    logsBody.appendChild(tr);
-                });
+                const data = await resp.json();
+                window.showToast(tr("students.failedPrefix", "Failed") + ": " +
+                    (window.describeApiError(data.detail) || tr("students.unknownError", "Unknown error")), "error");
             }
+        } catch (err) {
+            console.error(err);
+            window.showToast(tr("students.networkUpdate", "Network error while updating student."), "error");
         }
-    } catch (e) {
-        console.error("Error updating personal stats:", e);
+    });
+});
+
+// ── Roster import / export ───────────────────────────────────────────────────
+// The single-row form above is fine for one late enrolment. A whole class is a
+// CSV, and it is validated row by row so one bad email does not cost the other
+// 200 rows.
+
+function wireRosterImportExport() {
+    const fileInput = document.getElementById("import-file");
+    const drop = document.getElementById("import-drop");
+    const template = document.getElementById("btn-download-template");
+    const exportBtn = document.getElementById("btn-export-students");
+    if (!fileInput || !drop) return;
+
+    drop.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files.length) {
+            importRoster(fileInput.files[0]);
+        }
+    });
+
+    // Dragging a file onto the page navigates away by default, so both handlers
+    // have to preventDefault — dragover as well as drop.
+    ["dragenter", "dragover"].forEach(name => {
+        drop.addEventListener(name, (event) => {
+            event.preventDefault();
+            drop.classList.add("dragover");
+        });
+    });
+    ["dragleave", "dragend"].forEach(name => {
+        drop.addEventListener(name, () => drop.classList.remove("dragover"));
+    });
+    drop.addEventListener("drop", (event) => {
+        event.preventDefault();
+        drop.classList.remove("dragover");
+        const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+        if (file) importRoster(file);
+    });
+
+    if (template) {
+        template.addEventListener("click", () => downloadRosterFile(
+            '/api/students/import-template', template, tr("students.building", "Building…")));
+    }
+    if (exportBtn) {
+        exportBtn.addEventListener("click", () => downloadRosterFile(
+            '/api/students/export', exportBtn, tr("students.exporting", "Exporting…")));
     }
 }
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
-async function loadStudents() {
+
+async function downloadRosterFile(url, button, busyLabel) {
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = busyLabel;
     try {
-        const resp = await fetch('/api/students');
+        const resp = await window.apiFetch(url);
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("students.buildFileFailed", "Could not build the file."), "error");
+            return;
+        }
+        const data = await resp.json();
+        if (data.count === 0) {
+            window.showToast(tr("students.noExport", "No students to export yet."), "warning");
+            return;
+        }
+        window.saveBase64File(data.content_base64, data.filename,
+            "Comma Separated Values", "*.csv", "text/csv");
+    } catch (e) {
+        console.error("Roster file download failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function importRoster(file) {
+    const drop = document.getElementById("import-drop");
+    const label = document.getElementById("import-drop-label");
+    const originalLabel = label.textContent;
+
+    if (!/\.csv$/i.test(file.name)) {
+        window.showToast(tr("students.csvOnly",
+            "Choose a .csv file. Save an Excel sheet as \"CSV UTF-8\" first."), "warning");
+        return;
+    }
+
+    label.textContent = trf("students.importing", { file: file.name }, `Importing ${file.name}…`);
+    drop.style.pointerEvents = "none";
+
+    try {
+        const body = new FormData();
+        body.append("file", file);
+        const resp = await window.apiFetch('/api/students/bulk-import', { method: "POST", body });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("students.importFailed", "Import failed."), "error");
+            return;
+        }
+
+        const report = await resp.json();
+        renderImportReport(report);
+
+        if (report.added > 0) {
+            window.showToast(trf("students.importedN", { n: report.added },
+                `Imported ${report.added} students.`), "success");
+            loadStudents();
+            loadClassCounts();
+        } else if (report.total === 0) {
+            window.showToast(tr("students.noDataRows", "The file had no data rows."), "warning");
+        } else {
+            window.showToast(tr("students.nothingImported",
+                "Nothing was imported — see the results below."), "warning");
+        }
+    } catch (e) {
+        console.error("Roster import failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    } finally {
+        label.textContent = originalLabel;
+        drop.style.pointerEvents = "";
+        // Reset so re-selecting the same file after a fix still fires `change`.
+        document.getElementById("import-file").value = "";
+    }
+}
+
+function renderImportReport(report) {
+    const wrapper = document.getElementById("import-result");
+    const chips = document.getElementById("import-chips");
+    const body = document.getElementById("import-log-body");
+
+    chips.innerHTML = `
+        <span class="import-chip added">${tr("students.chipAdded", "Added")}: ${report.added}</span>
+        <span class="import-chip skipped">${tr("students.chipSkipped", "Skipped")}: ${report.skipped}</span>
+        <span class="import-chip failed">${tr("students.chipErrors", "Errors")}: ${report.failed}</span>
+        <span class="import-chip">${tr("students.chipRows", "Rows read")}: ${report.total}</span>
+    `;
+
+    const rows = report.results || [];
+    if (rows.length === 0) {
+        body.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">${tr("students.noDataRows", "The file had no data rows.")}</td></tr>`;
+    } else {
+        // Problems first: with a 200-row roster the three failures are the only
+        // lines anyone needs to look at.
+        const rank = { error: 0, skipped: 1, added: 2 };
+        const sorted = rows.slice().sort((a, b) =>
+            (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || a.line - b.line);
+
+        const colour = { added: "var(--success)", skipped: "var(--warning)", error: "var(--danger)" };
+        // The API's status word is a machine value; only its label is translated.
+        const statusLabel = {
+            added: tr("students.resAdded", "added"),
+            skipped: tr("students.resSkipped", "skipped"),
+            error: tr("students.resError", "error")
+        };
+        const blank = `<span style="color: var(--text-muted);">${tr("students.blank", "(blank)")}</span>`;
+        body.innerHTML = sorted.map(r => `
+            <tr>
+                <td>${escapeHtml(String(r.line))}</td>
+                <td>${escapeHtml(r.name) || blank}</td>
+                <td>${escapeHtml(r.zk_id) || '<span style="color: var(--text-muted);">—</span>'}</td>
+                <td style="color: ${colour[r.status] || 'inherit'}; font-weight: 600; text-transform: capitalize;">${escapeHtml(statusLabel[r.status] || r.status)}</td>
+                <td>${escapeHtml(r.message)}</td>
+            </tr>
+        `).join("");
+    }
+
+    wrapper.style.display = "block";
+}
+
+// ── Class tools ──────────────────────────────────────────────────────────────
+// Promotion, class-to-class moves and clearing a finished batch. All three used
+// to be one-student-at-a-time jobs.
+
+function wireClassTools() {
+    const refresh = document.getElementById("btn-refresh-counts");
+    const preview = document.getElementById("btn-preview-promotion");
+    const move = document.getElementById("btn-move-class");
+    const clear = document.getElementById("btn-clear-class");
+    const graduateAction = document.getElementById("graduate-action");
+
+    if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
+    if (preview) preview.addEventListener("click", previewPromotion);
+    if (move) move.addEventListener("click", moveClass);
+    if (clear) clear.addEventListener("click", clearClass);
+
+    // Changing what happens to the final class rewrites the last line of the
+    // preview, so re-render it from the plan already fetched rather than making
+    // the admin press Preview again.
+    if (graduateAction) {
+        graduateAction.addEventListener("change", () => {
+            if (window.cachedPromotionPlan) renderPromotionPlan(window.cachedPromotionPlan);
+        });
+    }
+}
+
+async function loadClassCounts(announce = false) {
+    const box = document.getElementById("class-counts");
+    if (!box) return;
+
+    try {
+        const resp = await window.apiFetch('/api/students/by-standard');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const rows = data.standards || [];
+        window.cachedClassCounts = rows;
+
+        if (rows.length === 0) {
+            box.innerHTML = `<span style="font-size:13px; color: var(--text-muted);">${tr("students.none", "No students enrolled.")}</span>`;
+            return;
+        }
+
+        box.innerHTML = rows.map(r => {
+            const archived = r.archived > 0
+                ? ` <span class="count-value" style="color: var(--text-muted);">+${r.archived}</span>`
+                : "";
+            const title = r.archived > 0
+                ? ` title="${escapeAttr(r.archived + " " + tr("students.archived", "Archived"))}"`
+                : "";
+            return `<span class="count-chip${r.archived > 0 && r.active === 0 ? ' archived' : ''}"${title}>` +
+                `<strong>${escapeHtml(r.standard)}</strong>` +
+                `<span class="count-value">${r.active}</span>${archived}</span>`;
+        }).join("");
+
+        if (announce) window.showToast(tr("classTools.countsRefreshed", "Class sizes updated."), "success");
+    } catch (e) {
+        console.error("Class counts failed", e);
+        box.innerHTML = `<span style="font-size:13px; color: var(--danger);">${tr("classTools.countsFailed", "Could not read the class sizes.")}</span>`;
+    }
+}
+
+/** Head count of one class, from the cached chips — used only in confirm text. */
+function cachedCountFor(standard, key = "active") {
+    const rows = window.cachedClassCounts || [];
+    const match = rows.find(r => r.standard === standard);
+    return match ? match[key] : 0;
+}
+
+async function previewPromotion() {
+    const box = document.getElementById("promotion-plan");
+    const button = document.getElementById("btn-preview-promotion");
+    if (!box) return;
+
+    box.style.display = "block";
+    box.innerHTML = `<span style="color: var(--text-muted);">${tr("classTools.loadingPlan", "Working out the plan…")}</span>`;
+    button.disabled = true;
+
+    try {
+        const resp = await window.apiFetch('/api/students/promotion-plan');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        window.cachedPromotionPlan = data;
+        renderPromotionPlan(data);
+    } catch (e) {
+        console.error("Promotion plan failed", e);
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.planFailed", "Could not build the promotion plan.")}</span>`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderPromotionPlan(data) {
+    const box = document.getElementById("promotion-plan");
+    const plan = data.plan || [];
+
+    if (plan.length < 2) {
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.needTwoClasses", "Add at least two classes in Settings before promoting.")}</span>`;
+        return;
+    }
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const graduateConsequence = {
+        archive: tr("classTools.graduatingArchive", "will be archived (records kept)"),
+        delete: tr("classTools.graduatingDelete", "will be deleted permanently, with all attendance"),
+        keep: tr("classTools.graduatingKeep", "stay where they are")
+    }[action];
+
+    const items = plan.map(step => {
+        const count = step.students;
+        if (step.graduating) {
+            if (count === 0) {
+                return `<li class="plan-empty">${escapeHtml(step.from_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+            }
+            return `<li class="plan-graduating">${escapeHtml(step.from_standard)} · ${count} ` +
+                `${tr("classTools.students", "students")} ${tr("classTools.willGraduate", "graduating")} — ${escapeHtml(graduateConsequence)}</li>`;
+        }
+        if (count === 0) {
+            return `<li class="plan-empty">${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+        }
+        return `<li>${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} · ${count} ${tr("classTools.students", "students")}</li>`;
+    }).join("");
+
+    const nobody = (data.total_moving || 0) === 0 && (data.total_graduating || 0) === 0;
+
+    box.innerHTML = `
+        <h5>${tr("classTools.planTitle", "What will happen")}</h5>
+        <ul>${items}</ul>
+        ${nobody
+            ? `<span class="plan-empty">${tr("classTools.nothingToDo", "Nothing to promote — no students are enrolled.")}</span>`
+            : `<label class="tool-label" for="promote-confirm">${tr("classTools.typePromote", "Type PROMOTE to confirm")}</label>
+               <input type="text" id="promote-confirm" class="input-field" autocomplete="off" spellcheck="false">
+               <button type="button" class="btn btn-danger" id="btn-confirm-promotion" style="margin-top: 10px;">${tr("classTools.promoteConfirmBtn", "Promote All Classes")}</button>`}
+    `;
+
+    const confirmBtn = document.getElementById("btn-confirm-promotion");
+    if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
+}
+
+async function confirmPromotion() {
+    const input = document.getElementById("promote-confirm");
+    const button = document.getElementById("btn-confirm-promotion");
+    const typed = (input.value || "").trim();
+
+    // The phrase is checked here and again on the server. This copy only exists
+    // to keep a mis-click from becoming a round trip.
+    if (typed !== "PROMOTE") {
+        window.showToast(tr("classTools.promoteConfirm", "Type PROMOTE (in capitals) to run this promotion."), "warning");
+        input.focus();
+        return;
+    }
+
+    if (!window.confirmTwice(
+        tr("classTools.promoteConfirmAgain", "The promotion plan is ready. Do you want to continue?"),
+        tr("classTools.promoteFinalConfirm", "Please confirm again to promote all classes."))) return;
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("students.building", "Building…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/promote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ graduate_action: action, confirm: "PROMOTE" })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.promoteFailed", "Could not run the promotion."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        let message = trf("classTools.promoted", { moved: result.promoted },
+            `Promotion complete. ${result.promoted} students moved.`);
+        if (result.graduate_action === "archive" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedArchived", { n: result.graduated }, `${result.graduated} archived.`);
+        } else if (result.graduate_action === "delete" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedDeleted", { n: result.graduated }, `${result.graduated} deleted.`);
+        }
+        window.showToast(message, "success");
+
+        // The plan is spent: its head counts describe a roster that no longer
+        // exists, and leaving the confirm box on screen invites a second run.
+        window.cachedPromotionPlan = null;
+        document.getElementById("promotion-plan").style.display = "none";
+        loadStudents();
+        loadClassCounts();
+    } catch (e) {
+        console.error("Promotion failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function moveClass() {
+    const from = document.getElementById("move-from").value;
+    const to = document.getElementById("move-to").value;
+    const button = document.getElementById("btn-move-class");
+
+    if (!from || !to) {
+        window.showToast(tr("classTools.moveNeedBoth", "Choose both a source and a destination class."), "warning");
+        return;
+    }
+    if (from === to) {
+        window.showToast(tr("classTools.moveSame", "Those are the same class — nothing to move."), "warning");
+        return;
+    }
+
+    const count = cachedCountFor(from);
+    if (count === 0) {
+        window.showToast(trf("classTools.moveNobody", { from },
+            `There are no active students in ${from}.`), "warning");
+        return;
+    }
+
+    if (!window.confirmTwice(
+        trf("classTools.moveConfirm", { n: count, from, to },
+            `Move ${count} students from ${from} to ${to}?`),
+        tr("classTools.moveConfirmAgain", "Please confirm again to move these students."))) return;
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("students.building", "Building…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/change-standard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_standard: from, to_standard: to })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.moveFailed", "Could not move that class."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        window.showToast(trf("classTools.moved", { n: result.moved, to },
+            `Moved ${result.moved} students to ${to}.`), "success");
+        loadStudents();
+        loadClassCounts();
+    } catch (e) {
+        console.error("Class move failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function clearClass() {
+    const select = document.getElementById("clear-class");
+    const confirmInput = document.getElementById("clear-confirm");
+    const button = document.getElementById("btn-clear-class");
+    const cls = select.value;
+
+    if (!cls) {
+        window.showToast(tr("classTools.clearNeedClass", "Choose the class you want to clear."), "warning");
+        return;
+    }
+    // The typed name is what the server checks too. Asking for it here keeps a
+    // stray click on a red button from deleting a class.
+    if ((confirmInput.value || "").trim() !== cls) {
+        window.showToast(tr("classTools.clearMismatch", "Type the class name exactly as shown to confirm."), "warning");
+        confirmInput.focus();
+        return;
+    }
+
+    const total = cachedCountFor(cls, "total");
+    if (total === 0) {
+        window.showToast(trf("classTools.clearNobody", { cls }, `There are no students in ${cls}.`), "warning");
+        return;
+    }
+
+    if (!window.confirmTwice(
+        trf("classTools.clearConfirm", { n: total, cls },
+            `Permanently delete ${total} students in ${cls}, along with every attendance record they have?\n\nThis cannot be undone.`),
+        tr("classTools.clearConfirmAgain", "Please confirm again to permanently delete this class."))) return;
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("students.building", "Building…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ standard: cls, confirm: cls, include_archived: true })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.clearFailed", "Could not clear that class."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        window.showToast(trf("classTools.cleared",
+            { students: result.students_deleted, records: result.attendance_deleted },
+            `Deleted ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`), "success");
+        confirmInput.value = "";
+        loadStudents();
+        loadClassCounts();
+    } catch (e) {
+        console.error("Class clear failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+// ── Roster ───────────────────────────────────────────────────────────────────
+
+async function loadStudents() {
+    const showArchived = document.getElementById("show-archived");
+    const includeArchived = !!(showArchived && showArchived.checked);
+
+    try {
+        const resp = await window.apiFetch(
+            `/api/students${includeArchived ? '?include_archived=true' : ''}`);
         const students = await resp.json();
+        window.cachedStudents = students;
 
         const tbody = document.getElementById("student-table-body");
         tbody.innerHTML = "";
 
         if (students.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>";
+            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>${tr("students.none", "No students enrolled.")}</td></tr>`;
         } else {
+            const attendanceLabel = tr("students.attendanceBtn", "Attendance");
+            const editLabel = tr("students.editBtn", "Edit");
+            const deleteLabel = tr("students.deleteBtn", "Delete");
+            const restoreLabel = tr("students.restore", "Restore");
+            const archivedLabel = tr("students.archived", "Archived");
+
             students.forEach(s => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
+                const archived = s.is_active === false;
+                const tr_ = document.createElement("tr");
+                if (archived) tr_.className = "is-archived";
+
+                // The archived badge goes in the name cell, not the standard
+                // cell — filterStudents() compares that one against the class
+                // filter as exact text.
+                const restoreBtn = archived
+                    ? `<button class="btn-restore-student" data-id="${s.id}" style="background-color: var(--success); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(restoreLabel)}</button>`
+                    : "";
+
+                tr_.innerHTML = `
                     <td>${escapeHtml(String(s.id))}</td>
-                    <td>${escapeHtml(s.name)}</td>
+                    <td>${escapeHtml(s.name)}${archived ? `<span class="archived-badge">${escapeHtml(archivedLabel)}</span>` : ""}</td>
+                    <td>${escapeHtml(s.standard || '')}</td>
                     <td>${escapeHtml(s.zk_id)}</td>
                     <td>${escapeHtml(s.parent_email)}</td>
-<<<<<<< HEAD
-                    <td><button onclick="deleteStudent(${s.id})" class="btn-delete">Delete</button></td>
-=======
-                    <td style="display: flex; gap: 8px;">
-                        <button onclick="openAttendanceModal(${s.id}, '${escapeHtml(s.name)}', '${escapeHtml(s.zk_id)}', '${escapeHtml(s.parent_email)}')" class="btn-attendance" style="padding: 8px 12px; font-size: 13px;">Attendance</button>
-                        <button onclick="deleteStudent(${s.id})" class="btn-delete" style="padding: 8px 12px; font-size: 13px;">Delete</button>
+                    <td style="display: flex; gap: 5px; align-items: center; white-space: nowrap; flex-wrap: nowrap;">
+                        <button class="btn-add btn-attendance-modal" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(attendanceLabel)}</button>
+                        <button class="btn-edit-modal" data-id="${s.id}" style="background-color: var(--warning); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(editLabel)}</button>
+                        ${restoreBtn}
+                        <button class="btn-delete btn-delete-student" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(deleteLabel)}</button>
                     </td>
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
                 `;
-                tbody.appendChild(tr);
+
+                // Attach event listeners safely (no inline JS string injection)
+                tr_.querySelector('.btn-attendance-modal').addEventListener('click', () => {
+                    openAttendanceModal(s.id, s.name, s.zk_id);
+                });
+                tr_.querySelector('.btn-edit-modal').addEventListener('click', () => {
+                    openEditStudentModal(s.id, s.name, s.zk_id, s.parent_email, s.standard);
+                });
+                tr_.querySelector('.btn-delete-student').addEventListener('click', () => {
+                    deleteStudent(s.id);
+                });
+                const restore = tr_.querySelector('.btn-restore-student');
+                if (restore) restore.addEventListener('click', () => restoreStudent(s.id));
+
+                tbody.appendChild(tr_);
             });
         }
+        // Apply filter in case text is already typed
+        filterStudents();
     } catch (e) {
         console.error("Error fetching students:", e);
+        const tbody = document.getElementById("student-table-body");
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--danger);'>${tr("students.serverUnreachable", "Could not reach the server.")}</td></tr>`;
+        }
     }
 }
 
-<<<<<<< HEAD
-=======
-function searchStudents() {
-    const query = document.getElementById("student-search").value.toLowerCase();
-    const rows = document.querySelectorAll("#student-table-body tr");
-    
-    rows.forEach(row => {
-        const idCell = row.cells[0]?.innerText.toLowerCase() || "";
-        const nameCell = row.cells[1]?.innerText.toLowerCase() || "";
-        const zkIdCell = row.cells[2]?.innerText.toLowerCase() || "";
-        
-        if (idCell.includes(query) || nameCell.includes(query) || zkIdCell.includes(query)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
+async function deleteStudent(id) {
+    // First, check how many attendance records this student has
+    let recordCount = 0;
+    try {
+        const countResp = await window.apiFetch(`/api/attendance?student_id=${id}&limit=100000`);
+        if (countResp.ok) {
+            const records = await countResp.json();
+            recordCount = records.length;
         }
-    });
+    } catch (e) {
+        // If count check fails, proceed with basic confirmation
+    }
+
+    let confirmMsg = tr("students.confirmDelete", "Are you sure you want to delete this student?");
+    if (recordCount > 0) {
+        confirmMsg = trf("students.confirmDeleteRecords", { count: recordCount },
+            `⚠️ This student has ${recordCount} attendance records that will also be permanently deleted.\n\nAre you sure you want to proceed?`);
+    }
+
+    if (!window.confirmTwice(confirmMsg,
+        tr("students.confirmDeleteAgain", "Please confirm again to permanently delete this student and related records."))) return;
+
+    try {
+        const resp = await window.apiFetch(`/api/students/${id}`, { method: 'DELETE' });
+        if (resp.ok) {
+            window.showToast(tr("students.deleted", "Student deleted successfully."), "success");
+            loadStudents();
+            loadClassCounts();
+        } else {
+            window.showToast(tr("students.deleteFailed", "Failed to delete student."), "error");
+        }
+    } catch (e) {
+        console.error(e);
+        window.showToast(tr("students.deleteError", "Error deleting student."), "error");
+    }
 }
 
-function openAttendanceModal(id, name, zkId, email) {
-    currentStudentId = id;
-    currentStudentName = name;
-    currentStudentZkId = zkId;
-    currentStudentEmail = email || "N/A";
-    document.getElementById("modal-student-name").innerText = `Attendance for ${name}`;
-    document.getElementById("attendance-modal").style.display = "flex";
-    
-    // Set current month as default
-    const now = new Date();
-    document.getElementById("report-month").value = now.getMonth() + 1;
-    document.getElementById("report-year").value = now.getFullYear();
+/** Bring one archived student back — a leaver repeating the year, usually. */
+async function restoreStudent(id) {
+    if (!window.confirmTwice(
+        tr("students.confirmRestore", "Restore this student to the active roster?"),
+        tr("students.confirmRestoreAgain", "Please confirm again to restore this student."))) return;
 
-    updatePersonalStats();
+    try {
+        const resp = await window.apiFetch(`/api/students/${id}/restore`, { method: 'POST' });
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("students.restoreFailed", "Could not restore that student."), "error");
+            return;
+        }
+        window.showToast(tr("students.restored", "Student restored to the active roster."), "success");
+        loadStudents();
+        loadClassCounts();
+    } catch (e) {
+        console.error("Restore failed", e);
+        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
+    }
+}
+
+function filterStudents() {
+    const term = document.getElementById("search-id").value.toLowerCase();
+    const standardFilter = document.getElementById("filter-standard").value;
+    const rows = document.getElementById("student-table-body").getElementsByTagName("tr");
+
+    for (let i = 0; i < rows.length; i++) {
+        const zkIdCol = rows[i].getElementsByTagName("td")[3];
+        const standardCol = rows[i].getElementsByTagName("td")[2];
+        if (zkIdCol && standardCol) {
+            const zkIdText = zkIdCol.textContent || zkIdCol.innerText;
+            const standardText = standardCol.textContent || standardCol.innerText;
+
+            const matchSearch = zkIdText.toLowerCase().includes(term);
+            const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+
+            if (matchSearch && matchStandard) {
+                rows[i].style.display = "";
+            } else {
+                rows[i].style.display = "none";
+            }
+        }
+    }
+}
+
+function openAttendanceModal(studentId, studentName, studentZkId) {
+    document.getElementById("attendance-modal").style.display = "block";
+    document.getElementById("modal-student-name").textContent =
+        trf("students.attendanceOf", { name: studentName }, `Attendance: ${studentName}`);
+
+    const zkEl = document.getElementById("modal-student-zk-id");
+    zkEl.textContent = trf("students.zkIdLabel", { id: studentZkId }, `ZK ID: ${studentZkId}`);
+    zkEl.dataset.name = studentName;
+    zkEl.dataset.zkid = studentZkId;
+
+    document.getElementById("modal-student-id").value = studentId;
+
+    const now = new Date();
+    const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+    document.getElementById("modal-month").value = monthStr;
+
+    loadStudentMonthlyAttendance();
 }
 
 function closeAttendanceModal() {
     document.getElementById("attendance-modal").style.display = "none";
 }
 
-function populateYearDropdown() {
-    const yearSelect = document.getElementById("report-year");
-    const currentYear = new Date().getFullYear();
-    for (let y = currentYear; y >= currentYear - 5; y--) {
-        const opt = document.createElement("option");
-        opt.value = y;
-        opt.textContent = y;
-        yearSelect.appendChild(opt);
-    }
+async function openEditStudentModal(id, name, zk_id, parent_email, standard) {
+    document.getElementById("edit-student-modal").style.display = "block";
+    document.getElementById("edit_student_id").value = id;
+    document.getElementById("edit_student_name").value = name;
+    document.getElementById("edit_zk_id").value = zk_id;
+    document.getElementById("edit_parent_email").value = parent_email;
+
+    // The class list is loaded from Settings, so re-fill this one select with the
+    // student's own value marked. Going through populateStandardSelects (rather
+    // than setting .value) means a 12th student is never silently reset to 11th
+    // when the list is still in flight, and it costs no extra request — the
+    // standards promise is cached.
+    const stdSelect = document.getElementById("edit_standard");
+    stdSelect.dataset.selected = standard || "";
+    await window.populateStandardSelects(stdSelect.parentElement);
 }
 
-async function downloadStudentPDF() {
-    const month = document.getElementById("report-month").value;
-    const year = document.getElementById("report-year").value;
-    
-    try {
-        window.showToast("Generating report...", "info");
-        
-        const resp = await fetch(`/api/attendance?limit=5000`);
-        const allLogs = await resp.json();
-        
-        // Filter by student and month/year
-        const studentLogs = allLogs.filter(log => {
-            const logDate = new Date(log.punch_time);
-            return String(log.student_zk_id) === String(currentStudentZkId) && 
-                   (logDate.getMonth() + 1) === parseInt(month) && 
-                   logDate.getFullYear() === parseInt(year);
-        });
+function closeEditStudentModal() {
+    document.getElementById("edit-student-modal").style.display = "none";
+    document.getElementById("editStudentForm").reset();
+}
 
-        if (studentLogs.length === 0) {
-            window.showToast("No attendance records found for the selected period.", "warning");
+function downloadStudentMonthlyReport() {
+    const zkIdEl = document.getElementById("modal-student-zk-id");
+    const studentName = zkIdEl.dataset.name || "Unknown";
+    const studentZkId = zkIdEl.dataset.zkid || "Unknown";
+    const month = document.getElementById("modal-month").value;
+
+    const tbodyEl = document.getElementById("modal-attendance-body");
+    const rows = tbodyEl.getElementsByTagName("tr");
+
+    // A placeholder row (loading / empty / error) has no data cells, so the
+    // presence of four <td>s is a surer test than matching its wording — which
+    // is translated now and would not match an English string.
+    const hasData = Array.from(rows).some(r => r.getElementsByTagName("td").length === 4);
+    if (!hasData) {
+        window.showToast(tr("students.noData", "No data to download"), "warning");
+        return;
+    }
+
+    // The PDF libraries are bundled with the app. If they are missing the page was
+    // served incompletely — say so instead of failing with a generic message.
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        console.error("jsPDF not loaded — check js/jspdf.umd.min.js is being served.");
+        window.showToast(tr("students.pdfLibMissing",
+            "PDF library did not load. Please restart the app and try again."), "error");
+        return;
+    }
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        if (typeof doc.autoTable !== "function") {
+            console.error("jsPDF AutoTable plugin not loaded — check js/jspdf.plugin.autotable.min.js.");
+            window.showToast(tr("students.pdfPluginMissing",
+                "PDF table plugin did not load. Please restart the app and try again."), "error");
             return;
         }
 
-        // Group by date to get In/Out times
-        const logsByDate = {};
-        studentLogs.forEach(log => {
-            const dateStr = new Date(log.punch_time).toDateString();
-            if (!logsByDate[dateStr]) logsByDate[dateStr] = [];
-            logsByDate[dateStr].push(log);
-        });
+        // Everything below stays English on purpose: jsPDF ships Helvetica only
+        // and does no Devanagari shaping, so Marathi text would render as boxes.
+        doc.setFontSize(18);
+        doc.text("Student Attendance Report", 14, 22);
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const primaryColor = [15, 23, 42]; // Slate 900
-        const accentColor = [59, 130, 246]; // Blue 500
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text(`Student Name: ${studentName}`, 14, 32);
+        doc.text(`ZK ID: ${studentZkId}`, 14, 40);
+        doc.text(`Month: ${month}`, 14, 48);
 
-        // Background header
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(0, 0, 210, 40, 'F');
-        
-        // Title
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont("helvetica", "bold");
-        doc.text("ATTENDANCE REPORT", 14, 25);
-        
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(200, 200, 200);
-        doc.text(`${getMonthName(month).toUpperCase()} ${year}`, 14, 32);
-
-        // Student Info Block
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text("STUDENT DETAILS", 14, 50);
-        
-        doc.setDrawColor(226, 232, 240);
-        doc.line(14, 52, 196, 52);
-        
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Name:`, 14, 60);
-        doc.text(`ZK Machine ID:`, 14, 66);
-        doc.text(`Email:`, 14, 72);
-        
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "bold");
-        doc.text(currentStudentName, 50, 60);
-        doc.text(String(currentStudentZkId), 50, 66);
-        doc.text(currentStudentEmail, 50, 72);
-
-        // Stats Summary Cards in PDF
-        const presentDays = Object.keys(logsByDate).filter(d => {
-            const p = logsByDate[d];
-            const lastS = (p[p.length-1] || p[0]).status;
-            return lastS && lastS.trim().toLowerCase() !== "absent";
-        }).length;
-        const totalDaysInMonth = new Date(year, month, 0).getDate();
-        const pPercent = Math.round((presentDays / totalDaysInMonth) * 100);
-        
-        doc.setFillColor(248, 250, 252);
-        doc.roundedRect(140, 55, 56, 22, 3, 3, 'F');
-        doc.setTextColor( accentColor[0], accentColor[1], accentColor[2]);
-        doc.setFontSize(16);
-        doc.text(`${pPercent}%`, 145, 70);
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Presence Score", 145, 62);
-
-        const tableColumn = ["Date", "In Time", "Out Time", "Status"];
+        const tableColumn = ["Date", "IN Time", "OUT Time", "Status"];
         const tableRows = [];
 
-        Object.keys(logsByDate).sort((a,b) => new Date(a) - new Date(b)).forEach(dateStr => {
-            const punches = logsByDate[dateStr];
-            punches.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
-            
-            const firstPunch = punches[0];
-            const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
-            const effectiveStatus = (lastPunch ? lastPunch.status : firstPunch.status) || "Absent";
-            
-            // Robust check: Mask if status is "Absent" OR if the time is exactly 12:30
-            const punchTime = new Date(firstPunch.punch_time);
-            const is1230 = punchTime.getHours() === 12 && punchTime.getMinutes() === 30;
-            const isAbsent = effectiveStatus.trim().toLowerCase() === "absent" || is1230;
+        for (let i = 0; i < rows.length; i++) {
+            const cols = rows[i].getElementsByTagName("td");
+            if (cols.length === 4) {
+                const date = cols[0].innerText;
+                const inTime = cols[1].innerText;
+                const outTime = cols[2].innerText;
+                // The English status, written by loadStudentMonthlyAttendance,
+                // rather than the badge the reader sees.
+                const status = cols[3].dataset.statusEn || cols[3].innerText;
+                tableRows.push([date, inTime, outTime, status]);
+            }
+        }
 
-            const inTime = isAbsent ? '--' : punchTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const outTime = (lastPunch && !isAbsent) ? new Date(lastPunch.punch_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--';
-
-            tableRows.push([
-                new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-                inTime,
-                outTime,
-                isAbsent ? 'Absent' : effectiveStatus
-            ]);
-        });
-        
         doc.autoTable({
             head: [tableColumn],
             body: tableRows,
-            startY: 85,
+            startY: 55,
             theme: 'striped',
-            headStyles: { 
-                fillColor: primaryColor,
-                textColor: [255, 255, 255],
-                fontSize: 10,
-                fontStyle: 'bold',
-                halign: 'left'
-            },
-            bodyStyles: { 
-                fontSize: 9,
-                textColor: [50, 50, 50]
-            },
-            alternateRowStyles: {
-                fillColor: [250, 250, 250]
-            },
-            columnStyles: {
-                3: { fontStyle: 'bold' }
-            },
-            margin: { top: 85 }
+            styles: { fontSize: 10, cellPadding: 3 },
+            headStyles: { fillColor: [59, 130, 246] }, // Primary blue color
         });
 
-        // Footer
-        const pageCount = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text(`Generated by EcoTrack Attendance System on ${new Date().toLocaleString()}`, 14, 285);
-            doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: 'right' });
-        }
+        // Strip characters Windows rejects in filenames — student names are free text.
+        const safeName = String(studentName).replace(/[\\/:*?"<>|]/g, "_").trim() || "Unknown";
+        const filename = `Attendance_${safeName}_${month}.pdf`;
 
-        doc.save(`Attendance_${currentStudentName.replace(/\s+/g, '_')}_${month}_${year}.pdf`);
-        window.showToast("Report downloaded successfully!", "success");
-        
+        // pywebview blocks browser-initiated downloads (ALLOW_DOWNLOADS defaults to
+        // False), so doc.save() silently does nothing inside the desktop window.
+        // Route through the native save dialog exposed by JSAPI.save_file, exactly
+        // as reports.js and attendance.js already do. doc.save() stays as the
+        // fallback for when the UI is opened in a real browser.
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file) {
+            const dataUri = doc.output('datauristring');
+            const base64String = dataUri.substring(dataUri.indexOf(',') + 1);
+            window.pywebview.api.save_file(base64String, filename, "PDF Document", "*.pdf")
+                .then(res => {
+                    if (res.status === "success") {
+                        window.showToast(tr("students.pdfSaved", "PDF saved successfully to:") + "\n" + res.path, "success");
+                    } else if (res.status === "error") {
+                        window.showToast(tr("students.pdfSaveFailed", "Failed to save PDF:") + " " + res.error, "error");
+                    }
+                })
+                .catch(err => {
+                    console.error("Save PDF API error:", err);
+                    doc.save(filename);
+                });
+        } else {
+            doc.save(filename);
+        }
     } catch (e) {
-        console.error("Error generating PDF", e);
-        window.showToast("Failed to generate PDF.", "error");
+        console.error("PDF generation failed:", e);
+        window.showToast(tr("students.pdfFailed", "Failed to generate PDF"), "error");
     }
 }
 
-function getMonthName(m) {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    return months[parseInt(m) - 1];
-}
+async function loadStudentMonthlyAttendance() {
+    const studentId = document.getElementById("modal-student-id").value;
+    const month = document.getElementById("modal-month").value;
+    const tbodyEl = document.getElementById("modal-attendance-body");
 
->>>>>>> 4445c4f78370a36c758193501f0415eb91873626
-async function deleteStudent(id) {
-    if (!confirm("Are you sure you want to delete this student?")) return;
+    tbodyEl.innerHTML = `<tr><td colspan='4' style='text-align:center;'>${tr("common.loading", "Loading...")}</td></tr>`;
+
+    if (!month) return;
+
     try {
-        const resp = await fetch(`/api/students/${id}`, { method: 'DELETE' });
-        if (resp.ok) {
-            window.showToast("Student deleted successfully.", "success");
-            loadStudents();
-        } else {
-            window.showToast("Failed to delete student.", "error");
+        const resp = await window.apiFetch(`/api/attendance?student_id=${studentId}&month=${month}&limit=1000`);
+        if (!resp.ok) {
+           tbodyEl.innerHTML = `<tr><td colspan='4' style='text-align:center; color: var(--danger);'>${tr("students.loadFailed", "Failed to load attendance.")}</td></tr>`;
+           document.getElementById("btn-download-report").style.display = "none";
+           return;
         }
-    } catch (e) {
+
+        let logs = await resp.json();
+
+        // --- STRICT FRONTEND FILTERING (Fallback) ---
+        // This ensures that even if the backend hasn't been safely restarted,
+        // the user only sees the exact selected student and the exact month.
+        const targetYear = parseInt(month.split('-')[0], 10);
+        const targetMonth = parseInt(month.split('-')[1], 10);
+        const modalZkId = document.getElementById("modal-student-zk-id").dataset.zkid;
+
+        logs = logs.filter(log => {
+            if (log.student_zk_id && String(log.student_zk_id) !== String(modalZkId)) {
+                return false;
+            }
+            const d = new Date(log.punch_time);
+            return d.getFullYear() === targetYear && (d.getMonth() + 1) === targetMonth;
+        });
+
+        tbodyEl.innerHTML = "";
+
+        if (logs.length === 0) {
+            tbodyEl.innerHTML = `<tr><td colspan='4' style='text-align:center; color: var(--text-muted);'>${tr("students.noneThisMonth", "No attendance records found for this month.")}</td></tr>`;
+            document.getElementById("btn-download-report").style.display = "none";
+            return;
+        }
+
+        document.getElementById("btn-download-report").style.display = "block";
+
+        const dailyLogs = {};
+        logs.forEach(log => {
+            const dateObj = new Date(log.punch_time);
+            const dateStr = dateObj.toLocaleDateString();
+            if (!dailyLogs[dateStr]) dailyLogs[dateStr] = [];
+            dailyLogs[dateStr].push(log);
+        });
+
+        const sortedDates = Object.keys(dailyLogs).sort((a,b) => new Date(a) - new Date(b));
+
+        sortedDates.forEach(dateStr => {
+            const punches = dailyLogs[dateStr];
+            punches.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
+
+            const firstPunch = punches[0];
+            const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
+
+            const inTime = new Date(firstPunch.punch_time).toLocaleTimeString();
+            const outTime = lastPunch ? new Date(lastPunch.punch_time).toLocaleTimeString() : '--';
+            const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
+
+            const statusClass = effectiveStatus.toLowerCase().replace(/\s+/g, "-");
+            const badgeHtml = `<span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(displayStatus(effectiveStatus))}</span>`;
+
+            const tr_ = document.createElement("tr");
+            tr_.innerHTML = `
+                <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${escapeHtml(dateStr)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${inTime}</td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${outTime}</td>
+                <td style="padding: 10px; border-bottom: 1px solid var(--border-color);" data-status-en="${escapeAttr(effectiveStatus)}">${badgeHtml}</td>
+            `;
+            tbodyEl.appendChild(tr_);
+        });
+
+    } catch(e) {
         console.error(e);
-        window.showToast("Error deleting student.", "error");
+        tbodyEl.innerHTML = `<tr><td colspan='4' style='text-align:center; color: var(--danger);'>${tr("students.loadError", "Error loading attendance.")}</td></tr>`;
     }
 }
 
@@ -442,4 +1050,11 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
+}
+
+// createTextNode leaves quotes alone, which is safe between tags but not inside
+// an attribute value. Class names come from Settings and are free text, so the
+// attribute form escapes both quote characters as well.
+function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }

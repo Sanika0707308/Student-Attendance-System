@@ -33,3 +33,5 @@ config_local.py
 node_modules/
 dist/
 build/
+*.exe
+*.zip
