@@ -3,8 +3,9 @@ import time
 from datetime import datetime
 import concurrent.futures
 from zk import ZK
-from database import SessionLocal, Student, Attendance
+from database import SessionLocal, Student, Attendance, is_holiday_for_standard
 from email_service import send_email_notification
+from message_templates import STATUS_FIELDS, status_phrase_for_status
 
 import structlog
 import logging
@@ -12,11 +13,19 @@ from logging.handlers import RotatingFileHandler
 
 # Configure logging to both console and file
 from config import LOG_FILE
-handler = RotatingFileHandler(LOG_FILE, maxBytes=10*1024*1024, backupCount=5)
+# encoding must be explicit: punch handling below logs Marathi status strings,
+# and Windows defaults this handler to cp1252, which raises UnicodeEncodeError
+# on Devanagari and would take down the polling thread mid-write.
+handler = RotatingFileHandler(
+    LOG_FILE, maxBytes=10*1024*1024, backupCount=5,
+    encoding="utf-8", errors="replace"
+)
 logging.basicConfig(
     format="%(message)s",
     level=logging.INFO,
-    handlers=[handler, logging.StreamHandler()]
+    # No StreamHandler: main.py points sys.stderr at console.log, so adding one
+    # would write every structlog record into that file a second time.
+    handlers=[handler]
 )
 
 structlog.configure(
@@ -30,32 +39,231 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
-# Global Thread Pool for non-blocking email triggers
-email_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+import queue
+import smtplib
+from sqlalchemy.orm import joinedload
+from crypto_utils import decrypt_password
+from database import SystemSettings
 
-def _send_email_async(student_id: int, punch_time: datetime, action: str):
+# Queue to serialize and batch email sending requests
+email_signal_queue = queue.Queue()
+
+# Global Thread Pool (kept as a single-threaded queue for compatibility)
+email_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+def _send_email_async(attendance_id: int):
+    """
+    Signals the background sequential worker to process a specific unsent email immediately.
+    """
+    email_signal_queue.put(attendance_id)
+
+def process_unsent_emails_batch(log_ids: list = None):
+    """
+    Finds and sends all unsent emails in a single serial batch, reusing one SMTP connection.
+    If log_ids is provided, limits the batch to those specific attendance record IDs.
+    """
     db = SessionLocal()
+    shared_smtp = None
     try:
-        student = db.query(Student).filter(Student.id == student_id).first()
-        if student:
-            time_diff = (datetime.now() - punch_time).total_seconds()
-            if time_diff > 86400: # Older than 24 hours
-                logger.info(f"Skipping stale email for {student.name} at {punch_time}")
-                success = True # Auto-mark as success so it doesn't stay pending
-            else:
-                success = send_email_notification(student.name, punch_time, student.parent_email, action)
-                
-            att = db.query(Attendance).filter(
-                Attendance.student_id == student_id, 
-                Attendance.punch_time == punch_time
-            ).first()
-            if att:
-                att.email_sent = success
+        # 1. Fetch system settings
+        settings = db.query(SystemSettings).first()
+        if not settings or not settings.smtp_email or not settings.smtp_password:
+            logger.error("SMTP Settings are missing. Cannot run email batch.")
+            # Record SMTP settings missing failure reason in DB
+            query = db.query(Attendance).filter(Attendance.email_sent.isnot(True))
+            if log_ids is not None:
+                query = query.filter(Attendance.id.in_(log_ids))
+            
+            # Restrict to configured window (default 24h) if log_ids is None
+            if log_ids is None:
+                window_hours = getattr(settings, "email_retry_window_hours", 24) or 24
+                from datetime import timedelta
+                cutoff = datetime.now() - timedelta(hours=window_hours)
+                query = query.filter(Attendance.punch_time >= cutoff)
+            
+            for att in query.all():
+                att.email_failure_reason = "SMTP Settings are missing"
+            db.commit()
+            return
+
+        # 2. Query logs to send
+        query = db.query(Attendance).options(joinedload(Attendance.student)).filter(
+            Attendance.email_sent.isnot(True)
+        )
+        if log_ids is not None:
+            query = query.filter(Attendance.id.in_(log_ids))
+        
+        # Restrict to configured window (default 24h) if log_ids is None
+        if log_ids is None:
+            window_hours = getattr(settings, "email_retry_window_hours", 24) or 24
+            from datetime import timedelta
+            cutoff = datetime.now() - timedelta(hours=window_hours)
+            query = query.filter(Attendance.punch_time >= cutoff)
+        
+        logs = query.all()
+        if not logs:
+            return
+
+        # 3. Helper to establish SMTP connection
+        def get_smtp_conn():
+            conn = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
+            conn.starttls()
+            conn.login(settings.smtp_email, decrypt_password(settings.smtp_password))
+            return conn
+
+        # 4. Open SMTP Connection
+        try:
+            shared_smtp = get_smtp_conn()
+        except smtplib.SMTPAuthenticationError as auth_err:
+            err_msg = f"SMTP authentication failed: {auth_err.smtp_error.decode('utf-8') if isinstance(auth_err.smtp_error, bytes) else auth_err.smtp_error}"
+            logger.error(err_msg)
+            # Mark all targeted emails as failed with this connection error immediately
+            for log in logs:
+                log.email_failure_reason = err_msg
+            db.commit()
+            return
+        except smtplib.SMTPConnectError as conn_err:
+            err_msg = f"Connection timeout: {str(conn_err)}"
+            logger.error(err_msg)
+            for log in logs:
+                log.email_failure_reason = err_msg
+            db.commit()
+            return
+        except Exception as smtp_err:
+            err_msg = f"Network error: {str(smtp_err)}"
+            logger.error(err_msg)
+            # Mark all targeted emails as failed with this connection error immediately
+            for log in logs:
+                log.email_failure_reason = err_msg
+            db.commit()
+            return
+
+        # Short status phrases, sourced from one place so the send path and the
+        # Settings preview always agree on what {status} expands to.
+        status_messages = {
+            status: status_phrase_for_status(settings, status)
+            for status in STATUS_FIELDS
+        }
+
+        # 5. Process emails in loop
+        for log in logs:
+            student = log.student
+            if not student or not student.parent_email:
+                log.email_sent = True # Auto-mark so it doesn't get stuck if there's no email address
+                log.email_failure_reason = "No parent email configured"
                 db.commit()
+                continue
+
+            action_str = status_messages.get(log.status, log.status)
+            
+            # Send notification
+            success, err_reason = send_email_notification(
+                student.name, log.punch_time, student.parent_email, action_str,
+                smtp_server=shared_smtp, status=log.status, standard=student.standard
+            )
+
+            if not success:
+                # Connection might have dropped. Try to reconnect once if error looks like connection close.
+                is_connection_error = any(kw in err_reason.lower() for kw in [
+                    "closed", "broken pipe", "connection", "winerror", "timeout", "smtpconnecterror"
+                ])
+                if is_connection_error:
+                    logger.warning(f"SMTP connection issue detected: {err_reason}. Attempting reconnection...")
+                    try:
+                        if shared_smtp:
+                            try:
+                                shared_smtp.quit()
+                            except:
+                                pass
+                        shared_smtp = get_smtp_conn()
+                        # Retry sending
+                        success, err_reason = send_email_notification(
+                            student.name, log.punch_time, student.parent_email, action_str,
+                            smtp_server=shared_smtp, status=log.status, standard=student.standard
+                        )
+                    except smtplib.SMTPAuthenticationError as auth_err:
+                        reconnect_msg = f"SMTP authentication failed: {auth_err.smtp_error.decode('utf-8') if isinstance(auth_err.smtp_error, bytes) else auth_err.smtp_error}"
+                        logger.error(reconnect_msg)
+                        shared_smtp = None
+                        log.email_failure_reason = reconnect_msg
+                        db.commit()
+                        break
+                    except Exception as reconnect_err:
+                        reconnect_msg = f"SMTP reconnection failed: {reconnect_err}"
+                        logger.error(reconnect_msg)
+                        shared_smtp = None
+                        # We lost the SMTP server completely.
+                        # Abort batch processing immediately to avoid long timeouts on remaining emails.
+                        log.email_failure_reason = reconnect_msg
+                        db.commit()
+                        break
+                
+            if success:
+                log.email_sent = True
+                log.email_failure_reason = None
+            else:
+                log.email_failure_reason = err_reason
+            
+            db.commit()
+            
+            # Sleep briefly to avoid triggering Gmail spam limits
+            time.sleep(1.0)
+            
     except Exception as e:
-        logger.error(f"Async Email Error: {e}")
+        logger.error(f"Error in process_unsent_emails_batch: {e}")
     finally:
+        if shared_smtp:
+            try:
+                shared_smtp.quit()
+            except:
+                pass
         db.close()
+
+def email_queue_worker():
+    """Background worker thread that serializes email sending tasks."""
+    logger.info("Email queue worker thread started.")
+    while True:
+        try:
+            # Block until a signal is received
+            signal = email_signal_queue.get()
+            if signal is None:
+                # Sentinel to stop thread
+                email_signal_queue.task_done()
+                break
+            
+            # Start a list of log IDs to process
+            log_ids = []
+            process_all = False
+            if isinstance(signal, int):
+                log_ids.append(signal)
+            else:
+                process_all = True
+            
+            # Drain queue safely
+            try:
+                while True:
+                    next_item = email_signal_queue.get_nowait()
+                    if next_item is None:
+                        # Put sentinel back so loop can exit normally on next cycle
+                        email_signal_queue.put(None)
+                        break
+                    elif isinstance(next_item, int):
+                        log_ids.append(next_item)
+                    else:
+                        process_all = True
+                    email_signal_queue.task_done()
+            except queue.Empty:
+                pass
+            
+            if process_all:
+                process_unsent_emails_batch(log_ids=None)
+            elif log_ids:
+                process_unsent_emails_batch(log_ids=log_ids)
+                
+            email_signal_queue.task_done()
+        except Exception as e:
+            logger.error(f"Error in email queue worker: {e}")
+        time.sleep(0.1) # Small cooldown
 
 class ZKTecoManager:
     def __init__(self, port=4370):
@@ -64,21 +272,36 @@ class ZKTecoManager:
         self.running = False
         self.thread = None
         self.is_online = False
+        self.email_worker_thread = None
 
     def start_polling(self, interval_seconds=10):
-        """Starts a background thread to poll the machine for new punches."""
+        """Starts background threads for ZKTeco polling and Email queue worker."""
         if self.running:
             return
         
         self.running = True
+        
+        # Start ZKTeco polling thread
         self.thread = threading.Thread(target=self._poll_loop, args=(interval_seconds,), daemon=True)
         self.thread.start()
         logger.info(f"Started polling ZKTeco background thread every {interval_seconds}s")
+        
+        # Start Email queue worker thread
+        self.email_worker_thread = threading.Thread(target=email_queue_worker, daemon=True)
+        self.email_worker_thread.start()
 
     def stop_polling(self):
         self.running = False
         if self.thread:
             self.thread.join()
+        
+        # Stop email worker thread by pushing None sentinel
+        email_signal_queue.put(None)
+        if self.email_worker_thread:
+            try:
+                self.email_worker_thread.join(timeout=2)
+            except Exception:
+                pass
     
     def _poll_loop(self, interval):
         while self.running:
@@ -180,6 +403,16 @@ class ZKTecoManager:
         student = db.query(Student).filter(Student.zk_id == zk_id).first()
         
         if student:
+            # A biometric device may still contain a punch on a holiday, but it
+            # must not create a local attendance record, email, or status update.
+            # "All" applies to both standards; a class holiday applies only to
+            # that class (for example 11th can be off while 12th is processed).
+            if is_holiday_for_standard(db, punch_time.date(), student.standard):
+                logger.info(
+                    f"Ignored holiday punch for {student.name} ({student.standard or '11th'}) at {punch_time}"
+                )
+                return
+
             # --- 1. Debounce (Double Punch) Protection ---
             # Ignore any punches made within 5 minutes of their last recorded punch
             from datetime import timedelta
@@ -268,7 +501,7 @@ class ZKTecoManager:
             print(f"[ZKTeco] SUCCESS: Recorded punch for {student.name} at {punch_time} ({db_status})")
             
             # --- 4. Send Email ---
-            email_executor.submit(_send_email_async, student.id, punch_time, action)
+            email_executor.submit(_send_email_async, new_attendance.id)
         else:
             logger.warning(f"Unregistered ZK ID punched: {zk_id}")
             print(f"[ZKTeco Debug] WARNING: Unregistered ZK ID punched: {zk_id}")

@@ -47,10 +47,23 @@ class TimeBoundManager:
             mid_time_obj = datetime.strptime(settings.mid_time, "%H:%M").time()
             now = datetime.now()
 
-            # Note: We only trigger the automatic absent flag if the current time has passed the boundary.
-            # AND it's not Sunday (weekday 6) AND not a configured Holiday
-            is_holiday = db.query(Holiday).filter(Holiday.date == now.strftime("%Y-%m-%d")).first() is not None
-            if now.time() >= mid_time_obj and now.weekday() != 6 and not is_holiday:
+            # A holiday can cover every student (All) or only 11th/12th. This also
+            # applies on Sundays: the configured class is the source of truth.
+            today_str = now.strftime("%Y-%m-%d")
+            holidays_today = db.query(Holiday).filter(Holiday.date == today_str).all()
+            
+            holiday_standards = set()
+            has_global_holiday = False
+            for h in holidays_today:
+                standard = getattr(h, "standard", "All") or "All"
+                if standard == "All":
+                    has_global_holiday = True
+                else:
+                    holiday_standards.add(standard)
+
+            # Do not create any absences for a global holiday. For a class-specific
+            # holiday, exclude only that class below and process the other class normally.
+            if now.time() >= mid_time_obj and not has_global_holiday:
                 today_start = datetime.combine(now.date(), datetime.min.time())
                 today_end = datetime.combine(now.date(), datetime.max.time())
 
@@ -67,10 +80,17 @@ class TimeBoundManager:
                 ids_with_record = set(students_with_record_today)
 
                 # Step 2: Get all active students whose ID is NOT in the above set
-                students_missing_today = db.query(Student).filter(
+                # and whose standard is not on holiday today.
+                students_missing_today_query = db.query(Student).filter(
                     Student.is_active == True,
                     ~Student.id.in_(ids_with_record)
-                ).all()
+                )
+                if holiday_standards:
+                    from sqlalchemy import func
+                    students_missing_today_query = students_missing_today_query.filter(
+                        ~func.coalesce(Student.standard, "11th").in_(list(holiday_standards))
+                    )
+                students_missing_today = students_missing_today_query.all()
 
                 if not students_missing_today:
                     return # Everyone is accounted for, nothing to do
@@ -89,10 +109,9 @@ class TimeBoundManager:
                 db.commit() # Single commit for all records
 
                 # Step 4: Fire async emails for all newly absent students
-                action = "गैरहजर असल्याचे आढळले आहे"
-                for student in students_missing_today:
-                    logger.info(f"Time-bound deadline met. Marked automated ABSENT for: {student.name}")
-                    email_executor.submit(_send_email_async, student.id, absence_punch, action)
+                for att in new_absences:
+                    logger.info(f"Time-bound deadline met. Marked automated ABSENT for student ID: {att.student_id}")
+                    email_executor.submit(_send_email_async, att.id)
 
         finally:
             db.close()

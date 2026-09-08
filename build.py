@@ -5,9 +5,33 @@ import subprocess
 import sys
 import zipfile
 
-ISCC_PATH = r"C:\Program Files\Inno Setup 7\ISCC.exe"
+def find_iscc():
+    local_app_data = os.environ.get('LOCALAPPDATA', '')
+    iscc_possibilities = [
+        r"C:\Program Files\Inno Setup 7\ISCC.exe",
+        r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        r"C:\Program Files\Inno Setup 6\ISCC.exe",
+        r"C:\Program Files (x86)\Inno Setup 5\ISCC.exe",
+        r"C:\Program Files\Inno Setup 5\ISCC.exe",
+    ]
+    if local_app_data:
+        iscc_possibilities.extend([
+            os.path.join(local_app_data, 'Programs', 'Inno Setup 7', 'ISCC.exe'),
+            os.path.join(local_app_data, 'Programs', 'Inno Setup 6', 'ISCC.exe'),
+            os.path.join(local_app_data, 'Programs', 'Inno Setup 5', 'ISCC.exe'),
+        ])
+    iscc_in_path = shutil.which("ISCC.exe")
+    if iscc_in_path:
+        iscc_possibilities.insert(0, iscc_in_path)
+    for path in iscc_possibilities:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+ISCC_PATH = find_iscc()
 ISS_FILE = "installer.iss"
 VERSION = "1.9"
+
 
 if __name__ == '__main__':
     backend_main = os.path.join('python_app', 'main.py')
@@ -105,9 +129,17 @@ if __name__ == '__main__':
 
     # ── Step 3: Compile the Inno Setup installer ─────────────────────────────
     print(f"\n[Step 3/3] Compiling Inno Setup installer with ISCC...")
-    if not os.path.exists(ISCC_PATH):
-        print(f"ERROR: ISCC not found at '{ISCC_PATH}'. Install Inno Setup 7 and re-run.")
-        sys.exit(1)
+    if not ISCC_PATH or not os.path.exists(ISCC_PATH):
+        print("WARNING: ISCC.exe (Inno Setup Compiler) was not found.")
+        print("         The standalone executable was built successfully in 'dist/InstituteAttendance.exe',")
+        print("         but the setup installer (.exe) could not be compiled.")
+        print("         To compile the installer, please install Inno Setup (e.g. 'winget install JRSoftware.InnoSetup') and re-run.")
+        print("=" * 55)
+        print(f"  BUILD PARTIALLY COMPLETE (v{VERSION})")
+        print(f"  EXE      : {exe_path}")
+        print("  Installer: (Skipped - Inno Setup not found)")
+        print("=" * 55)
+        sys.exit(0)
 
     result = subprocess.run([ISCC_PATH, ISS_FILE], capture_output=True, text=True)
     print(result.stdout)

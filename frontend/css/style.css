@@ -2,35 +2,114 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Color Palette */
-    --bg-color: #f8fafc;
-    /* Soft neutral background */
-    --sidebar-bg: #0f172a;
-    /* Deep slate */
-    --sidebar-hover: #1e293b;
-    --sidebar-text: #94a3b8;
+    /* Color Palette — Light Teal / Mint */
+    --bg-color: #f4fbf8;
+    /* Mint-tinted neutral background */
+    --sidebar-bg: #ffffff;
+    /* Light sidebar surface */
+    --sidebar-hover: #eafaf5;
+    --sidebar-text: #4e716a;
     --sidebar-active-text: #ffffff;
-    --sidebar-active-bg: #3b82f6;
-    /* Modern blue */
+    --sidebar-active-bg: #0f766e;
+    /* Teal */
 
     --card-bg: #ffffff;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border-color: #e2e8f0;
+    --text-main: #14312d;
+    --text-muted: #5f7a75;
+    --border-color: #dceee9;
 
     /* Status Colors */
-    --success: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
+    --success: #047857;
+    --danger: #e11d48;
+    --warning: #d97706;
+    /* A deeper amber, used as a button fill. --warning itself is tuned for
+       small coloured text on a light surface and is too pale to carry a white
+       label at 4.5:1. */
+    --warning-strong: #b45309;
+    --primary: #0f766e;
+    --primary-hover: #115e59;
+    --accent: #047857;
+    /* Emerald accent */
+    --primary-soft: rgba(15, 118, 110, 0.12);
+
+    /* Surfaces that used to be hardcoded inline (white selects, #eee table
+       headers, #fafafa / #fef2f2 / #f0f9ff panels). Named here so the dark
+       theme below can override them in one place. */
+    --input-bg: #ffffff;
+    --table-header-bg: #f1f8f5;
+    --panel-bg: #fafafa;
+    --panel-danger-bg: #fef2f2;
+    --panel-info-bg: #f0f9ff;
+    --overlay-bg: rgba(20, 49, 45, 0.45);
 
     /* Shadows & Effects */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-sm: 0 1px 2px 0 rgb(20 49 45 / 0.06);
+    --shadow-md: 0 4px 6px -1px rgb(20 49 45 / 0.1), 0 2px 4px -2px rgb(20 49 45 / 0.08);
+    --shadow-lg: 0 10px 15px -3px rgb(20 49 45 / 0.12), 0 4px 6px -4px rgb(20 49 45 / 0.08);
     --transition-std: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --border-radius: 12px;
+}
+
+/* ---------- DARK THEME ---------- */
+/* Set on <html> by sidebar.js before first paint and persisted in
+   localStorage. Overriding the variables above is enough for the whole app,
+   provided nothing hardcodes a colour inline. */
+
+[data-theme="dark"] {
+    /* Tells the browser to render native widgets — date pickers, dropdown
+       popups, scrollbars — dark too. Without it those stay bright white. */
+    color-scheme: dark;
+
+    --bg-color: #0d1b19;
+    --sidebar-bg: #12211f;
+    --sidebar-hover: #1b302c;
+    --sidebar-text: #9dc0b8;
+    --sidebar-active-text: #ffffff;
+    --sidebar-active-bg: #0f766e;
+
+    --card-bg: #162523;
+    --text-main: #e6f2ef;
+    --text-muted: #93aca7;
+    --border-color: #24403b;
+
+    /* Lifted for contrast against a dark surface; the light-theme shades are
+       too deep to read here. */
+    --success: #34d399;
+    --danger: #fb7185;
+    --warning: #fbbf24;
+    /* Stays a mid amber here rather than following --warning up: this one is a
+       button fill behind white text, so lifting it would kill the contrast. */
+    --warning-strong: #b0620c;
+    --primary: #14b8a6;
+    --primary-hover: #2dd4bf;
+    --accent: #34d399;
+    --primary-soft: rgba(20, 184, 166, 0.18);
+
+    --input-bg: #0f1e1c;
+    --table-header-bg: #1b302c;
+    --panel-bg: #13221f;
+    --panel-danger-bg: #2a1719;
+    --panel-info-bg: #10242b;
+    --overlay-bg: rgba(0, 0, 0, 0.6);
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.55), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
+/* Form controls do not inherit page colours by default, so without this they
+   stay white-on-white in dark mode. */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: var(--text-muted);
 }
 
 * {
@@ -57,45 +136,229 @@ app-sidebar {
 
 /* ---------- LOGIN ---------- */
 .login-body {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, var(--bg-color) 0%, #e2e8f0 100%);
-    padding: 20px;
+    background: #f2faf7;
+    padding: 24px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Animated aurora backdrop */
+.login-aurora {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(1100px 560px at 10% 6%, #e3f7f0 0%, transparent 62%),
+        radial-gradient(900px 480px at 90% 94%, #e9f8ee 0%, transparent 62%),
+        linear-gradient(150deg, #f8fdfb 0%, #edf9f5 50%, #f4fbf8 100%);
+}
+
+.login-aurora .blob {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: .4;
+    will-change: transform;
+}
+
+.login-aurora .blob-1 { width: 520px; height: 520px; top: -140px; left: -110px; background: #9ce3d6; animation: drift-a 18s ease-in-out infinite; }
+.login-aurora .blob-2 { width: 460px; height: 460px; bottom: -160px; right: -90px; background: #b9ecd4; animation: drift-b 22s ease-in-out infinite; }
+.login-aurora .blob-3 { width: 380px; height: 380px; top: 42%; left: 46%; background: #cdeeea; opacity: .32; animation: drift-c 26s ease-in-out infinite; }
+
+@keyframes drift-a { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(90px, 70px, 0) scale(1.15); } }
+@keyframes drift-b { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); } 50% { transform: translate3d(-80px, -60px, 0) scale(.9); } }
+@keyframes drift-c { 0%, 100% { transform: translate3d(-50%, -50%, 0) scale(1); } 50% { transform: translate3d(-30%, -65%, 0) scale(1.2); } }
+
+/* Faint moving grid over the aurora */
+.login-aurora .grid-glow {
+    position: absolute;
+    inset: -50%;
+    background-image:
+        linear-gradient(rgba(15, 118, 110, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 118, 110, .07) 1px, transparent 1px);
+    background-size: 54px 54px;
+    mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 62%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 62%);
+    animation: grid-pan 34s linear infinite;
+}
+
+@keyframes grid-pan { to { transform: translate3d(54px, 54px, 0); } }
+
+/* Language switch on the login screen. The sidebar carries one on every other
+   page, but there is no sidebar here — so it floats in the corner rather than
+   pushing the centred card off-centre. */
+.login-lang-toggle {
+    position: fixed;
+    top: 18px;
+    right: 20px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--text-main);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    box-shadow: 0 6px 16px -10px rgba(20, 49, 45, .35);
+    cursor: pointer;
+    transition: var(--transition-std);
+}
+
+.login-lang-toggle:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-1px);
 }
 
 .login-wrapper {
+    position: relative;
+    z-index: 1;
     display: flex;
-    max-width: 900px;
+    max-width: 980px;
     width: 100%;
-    min-height: 550px;
+    min-height: 560px;
+    border-radius: 24px;
     background: var(--card-bg);
-    border-radius: 20px;
-    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 30px 60px -24px rgba(20, 49, 45, .22), 0 10px 24px -14px rgba(20, 49, 45, .12);
     overflow: hidden;
+    animation: card-in .7s cubic-bezier(.22, 1, .36, 1) both;
+    transform-style: preserve-3d;
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1), box-shadow .35s ease;
 }
 
+/* Pointer-driven 3D tilt (vars written by login.js) */
+.login-wrapper.is-tilting {
+    transition: transform .12s linear, box-shadow .35s ease;
+    transform: perspective(1400px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+}
+
+@keyframes card-in {
+    from { opacity: 0; transform: translateY(26px) scale(.965); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-wrapper.shake { animation: card-shake .5s cubic-bezier(.36, .07, .19, .97) both; }
+
+@keyframes card-shake {
+    10%, 90% { transform: translateX(-3px); }
+    20%, 80% { transform: translateX(6px); }
+    30%, 50%, 70% { transform: translateX(-10px); }
+    40%, 60% { transform: translateX(10px); }
+}
+
+/* ----- Left showcase panel ----- */
 .login-image-side {
     flex: 1;
-    background-image: url('../images/login_bg.jpeg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    /* Optional: subtle overlay if the image is too bright */
+    min-height: 560px;
+    overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 36px 34px;
+    color: var(--text-main);
+    background: linear-gradient(160deg, #f1fcf8 0%, #ddf5ee 56%, #d0efe8 100%);
+    border-right: 1px solid #d4ede6;
 }
 
 .login-image-side::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(15, 23, 42, 0.4), transparent);
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, .62), transparent 54%);
 }
 
+.brand-row { position: relative; z-index: 2; flex: 0 0 auto; display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #115e59; }
+.brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 0 rgba(15, 118, 110, .5); animation: brand-pulse 2.4s ease-out infinite; }
+
+@keyframes brand-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(15, 118, 110, .45); }
+    70% { box-shadow: 0 0 0 12px rgba(15, 118, 110, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0); }
+}
+
+/* Scanner sits in its own flexible row, so it can never overlap the copy below */
+.scan-stage {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px 0;
+}
+
+.biometric-visual {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(15, 118, 110, .26);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .74);
+    box-shadow: 0 0 0 13px rgba(15, 118, 110, .045), 0 18px 42px -18px rgba(15, 118, 110, .38);
+}
+
+/* Rotating conic sweep around the scanner */
+.biometric-visual::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(13, 148, 136, .5) 42deg, transparent 96deg);
+    mask-image: radial-gradient(circle, transparent 62%, #000 64%, #000 72%, transparent 74%);
+    -webkit-mask-image: radial-gradient(circle, transparent 62%, #000 64%, #000 72%, transparent 74%);
+    animation: ring-spin 6s linear infinite;
+}
+
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+
+.scan-corner { position: absolute; width: 40px; height: 40px; border-color: var(--primary); border-style: solid; animation: corner-glow 2.8s ease-in-out infinite; }
+.corner-top-left { top: -8px; left: -8px; border-width: 3px 0 0 3px; border-radius: 12px 0 0; }
+.corner-top-right { top: -8px; right: -8px; border-width: 3px 3px 0 0; border-radius: 0 12px 0 0; animation-delay: .2s; }
+.corner-bottom-left { bottom: -8px; left: -8px; border-width: 0 0 3px 3px; border-radius: 0 0 0 12px; animation-delay: .6s; }
+.corner-bottom-right { bottom: -8px; right: -8px; border-width: 0 3px 3px 0; border-radius: 0 0 12px; animation-delay: .4s; }
+
+@keyframes corner-glow { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+.fingerprint { position: absolute; inset: 30px; border: 3.5px solid rgba(15, 118, 110, .9); border-radius: 47% 47% 44% 44%; border-bottom-color: transparent; transform: rotate(-12deg); }
+.fingerprint i { position: absolute; inset: 11px; display: block; border: 2.5px solid rgba(13, 148, 136, .72); border-radius: 47%; border-bottom-color: transparent; animation: ridge-pulse 3.2s ease-in-out infinite; }
+.fingerprint i:nth-child(2) { inset: 22px; animation-delay: .16s; }
+.fingerprint i:nth-child(3) { inset: 32px; animation-delay: .32s; }
+.fingerprint i:nth-child(4) { inset: 42px; animation-delay: .48s; }
+.fingerprint i:nth-child(5) { inset: 52px; animation-delay: .64s; }
+.fingerprint i:nth-child(6) { inset: 62px; animation-delay: .8s; }
+
+@keyframes ridge-pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+.scan-line { position: absolute; height: 2px; width: 84%; left: 8%; top: 50%; background: #0d9488; box-shadow: 0 0 12px 3px rgba(20, 184, 166, .55); animation: biometric-scan 2.8s ease-in-out infinite; }
+@keyframes biometric-scan { 0%, 100% { transform: translateY(-52px); opacity: .35; } 50% { transform: translateY(52px); opacity: 1; } }
+
+.login-visual-copy { position: relative; z-index: 2; flex: 0 0 auto; }
+.visual-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .16em; color: #115e59; }
+.login-visual-copy h2 { margin: 9px 0; font-size: 27px; letter-spacing: -.03em; color: var(--text-main); }
+.login-visual-copy p { color: #4a736c; font-size: 14px; line-height: 1.55; max-width: 330px; }
+
+.visual-stats { list-style: none; display: flex; gap: 10px; margin-top: 22px; }
+.visual-stats li { flex: 1; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .72); border: 1px solid rgba(15, 118, 110, .16); transition: var(--transition-std); }
+.visual-stats li:hover { background: #ffffff; border-color: rgba(15, 118, 110, .34); transform: translateY(-3px); box-shadow: 0 10px 20px -12px rgba(15, 118, 110, .5); }
+.visual-stats strong { display: block; font-size: 15px; font-weight: 700; color: var(--text-main); }
+.visual-stats span { font-size: 11px; color: #5c807a; letter-spacing: .02em; }
+
+/* ----- Right form panel ----- */
 .login-box {
     flex: 1;
-    padding: 60px 40px;
+    padding: 54px 44px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -103,29 +366,265 @@ app-sidebar {
     text-align: center;
 }
 
+.login-box > *,
+.login-box form > * { animation: rise-in .55s cubic-bezier(.22, 1, .36, 1) both; }
+.login-box > *:nth-child(1) { animation-delay: .1s; }
+.login-box > *:nth-child(2) { animation-delay: .16s; }
+.login-box > *:nth-child(3) { animation-delay: .22s; }
+.login-box form > *:nth-child(1) { animation-delay: .28s; }
+.login-box form > *:nth-child(2) { animation-delay: .34s; }
+.login-box form > *:nth-child(4) { animation-delay: .4s; }
+.login-box > *:nth-child(5) { animation-delay: .46s; }
+
+@keyframes rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.login-mark {
+    width: 54px;
+    height: 54px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: linear-gradient(140deg, var(--primary) 0%, var(--accent) 100%);
+    color: #fff;
+    box-shadow: 0 12px 26px -8px rgba(15, 118, 110, .6);
+    position: relative;
+}
+
+.login-mark svg { width: 26px; height: 26px; }
+
+.login-mark::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 20px;
+    border: 1px solid rgba(15, 118, 110, .35);
+    animation: mark-halo 2.6s ease-out infinite;
+}
+
+@keyframes mark-halo {
+    0% { transform: scale(.9); opacity: .9; }
+    100% { transform: scale(1.22); opacity: 0; }
+}
+
 .login-institute {
-    font-size: 24px;
+    font-size: 25px;
     font-weight: 700;
     margin-bottom: 8px;
-    color: var(--text-main);
+    letter-spacing: -.02em;
+    background: linear-gradient(100deg, var(--text-main) 12%, var(--primary) 62%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .login-subtitle {
     font-size: 14px;
     color: var(--text-muted);
-    margin-bottom: 32px;
+    margin-bottom: 30px;
 }
 
-.input-group label {
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 8px;
-    display: block;
-    color: var(--text-muted);
+/* Floating-label fields */
+.input-group {
+    position: relative;
+    margin-bottom: 18px;
     text-align: left;
 }
 
-.input-group input,
+.input-group input {
+    width: 100%;
+    padding: 22px 14px 7px 44px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border-color);
+    outline: none;
+    transition: var(--transition-std);
+    font-size: 14.5px;
+    line-height: 1.2;
+    color: var(--text-main);
+    background: #f4faf8;
+}
+
+.input-group label {
+    position: absolute;
+    left: 44px;
+    top: 24px;
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 500;
+    color: var(--text-muted);
+    pointer-events: none;
+    transform-origin: left top;
+    transition: transform .2s cubic-bezier(.22, 1, .36, 1), color .2s ease;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+    transform: translateY(-14px) scale(.78);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.field-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: #8fada7;
+    pointer-events: none;
+    transition: color .25s ease, transform .25s ease;
+}
+
+.field-icon svg { width: 18px; height: 18px; display: block; }
+.input-group:focus-within .field-icon { color: var(--primary); transform: translateY(-50%) scale(1.08); }
+
+.input-group input:focus {
+    border-color: var(--primary);
+    background: #ffffff;
+    box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+/* Animated underline that grows from the centre on focus */
+.field-underline {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+.input-group:focus-within .field-underline { transform: scaleX(1); }
+
+.password-field input { padding-right: 48px; }
+
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #7d9a94;
+    cursor: pointer;
+    padding: 0;
+    transition: var(--transition-std);
+}
+
+.password-toggle svg { width: 19px; height: 19px; }
+.password-toggle:hover { background: var(--primary-soft); color: var(--primary); }
+.password-toggle[aria-pressed="true"] { color: var(--primary); }
+
+/* Caps Lock hint */
+.caps-hint {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin: -6px 0 12px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    background: rgba(217, 119, 6, .12);
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.caps-hint.show { display: flex; animation: rise-in .25s ease-out both; }
+
+.login-btn {
+    position: relative;
+    width: 100%;
+    padding: 14px 20px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(100deg, var(--primary) 0%, var(--accent) 100%);
+    background-size: 180% 100%;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 9px;
+    box-shadow: 0 12px 24px -10px rgba(15, 118, 110, .8);
+    transition: transform .25s cubic-bezier(.22, 1, .36, 1), box-shadow .25s ease, background-position .5s ease;
+}
+
+/* Shine sweep on hover */
+.login-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent);
+    transform: skewX(-18deg);
+    transition: left .55s ease;
+}
+
+.login-btn:hover:not(:disabled) {
+    background-position: 100% 0;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px -10px rgba(4, 120, 87, .85);
+}
+
+.login-btn:hover:not(:disabled)::before { left: 120%; }
+.login-btn:active:not(:disabled) { transform: translateY(0) scale(.99); }
+.login-btn:focus-visible { outline: 3px solid rgba(15, 118, 110, .45); outline-offset: 2px; }
+.login-btn svg { width: 17px; height: 17px; transition: transform .25s ease; }
+.login-btn:hover:not(:disabled) svg { transform: translateX(4px); }
+
+/* Click ripple (spawned by login.js) */
+.login-btn .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .45);
+    transform: scale(0);
+    animation: ripple-out .6s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes ripple-out { to { transform: scale(2.6); opacity: 0; } }
+
+/* Loading state */
+.btn-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, .35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.login-btn.is-loading { cursor: progress; }
+.login-btn.is-loading .btn-spinner { display: block; }
+.login-btn.is-loading .btn-arrow { display: none; }
+.login-btn:disabled { cursor: not-allowed; opacity: .82; transform: none; box-shadow: none; }
+
+.login-foot { margin-top: 24px; font-size: 12px; color: #7c9a94; }
+.login-foot strong { color: var(--primary); font-weight: 600; }
+
 .input-field {
     width: 100%;
     padding: 12px 14px;
@@ -134,17 +633,16 @@ app-sidebar {
     outline: none;
     transition: var(--transition-std);
     font-size: 14px;
-    background: #f8fafc;
+    background: var(--input-bg);
+    color: var(--text-main);
 }
 
-.input-group input:focus,
 .input-field:focus {
     border-color: var(--primary);
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    background: var(--card-bg);
+    box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-.login-btn,
 .btn-mark {
     width: 100%;
     padding: 12px 20px;
@@ -163,16 +661,67 @@ app-sidebar {
     gap: 8px;
 }
 
-.login-btn:hover,
 .btn-mark:hover {
     background: var(--primary-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
-.login-btn:active,
 .btn-mark:active {
     transform: translateY(0);
+}
+
+/* .btn-mark is a full-width form submit. Put three of them in a flex row and
+   each one still demands 100% width, so every button wraps onto its own line
+   and the row reads as three stacked bars. .btn-pill is the toolbar variant:
+   sized to its label, no stacking. Declared after .btn-mark so the width and
+   margin overrides win on equal specificity. */
+.btn-pill {
+    width: auto;
+    margin-top: 0;
+    padding: 9px 15px;
+    font-size: 13.5px;
+    display: inline-flex;
+    gap: 7px;
+    white-space: nowrap;
+}
+
+/* Export buttons keep one colour each so the three are told apart at a glance.
+   .btn-mark:hover repaints the background primary, so each restates its own
+   fill — two classes plus a pseudo beats a single class. */
+.btn-xlsx {
+    background: #1d6f42;
+}
+
+.btn-mark.btn-xlsx:hover {
+    background: #1d6f42;
+    filter: brightness(1.15);
+}
+
+.btn-csv {
+    background: var(--success);
+}
+
+.btn-mark.btn-csv:hover {
+    background: var(--success);
+    filter: brightness(1.15);
+}
+
+.btn-pdf {
+    background: var(--danger);
+}
+
+.btn-mark.btn-pdf:hover {
+    background: var(--danger);
+    filter: brightness(1.15);
+}
+
+.export-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 25px;
 }
 
 .btn-add,
@@ -202,16 +751,42 @@ app-sidebar {
 }
 
 .btn-delete:hover {
-    background: #dc2626;
-    /* Darker red */
+    background: #be123c;
+    /* Darker rose */
     transform: translateY(-1px);
 }
 
 .login-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-top: 16px;
+    padding: 11px 13px;
+    border-radius: 10px;
+    border: 1px solid rgba(225, 29, 72, .28);
+    background: rgba(225, 29, 72, .08);
     font-size: 13px;
-    color: var(--danger);
-    font-weight: 500;
+    color: #be123c;
+    font-weight: 600;
+    text-align: left;
+    animation: rise-in .3s ease-out both;
+}
+
+.login-error:empty {
+    display: none;
+}
+
+.login-error::before {
+    content: '!';
+    flex: 0 0 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
 }
 
 /* ---------- SIDEBAR ---------- */
@@ -219,10 +794,11 @@ app-sidebar {
     width: 280px;
     min-height: 100vh;
     background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
     padding: 30px 20px;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     z-index: 10;
 }
 
@@ -231,7 +807,7 @@ app-sidebar {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 40px;
-    color: white;
+    color: var(--text-main);
     letter-spacing: -0.02em;
 }
 
@@ -257,14 +833,14 @@ app-sidebar {
 
 .sidebar nav a:hover {
     background: var(--sidebar-hover);
-    color: white;
+    color: var(--primary);
     transform: translateX(4px);
 }
 
 .sidebar nav a.active {
     background: var(--sidebar-active-bg);
     color: var(--sidebar-active-text);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.35);
 }
 
 /* Device Status Indicator */
@@ -289,17 +865,17 @@ app-sidebar {
 @keyframes pulse-online {
     0% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        box-shadow: 0 0 0 0 rgba(4, 120, 87, 0.7);
     }
 
     70% {
         transform: scale(1);
-        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+        box-shadow: 0 0 0 6px rgba(4, 120, 87, 0);
     }
 
     100% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        box-shadow: 0 0 0 0 rgba(4, 120, 87, 0);
     }
 }
 
@@ -424,7 +1000,7 @@ app-sidebar {
 
 .table-box form input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 3px var(--primary-soft);
     outline: none;
 }
 
@@ -461,7 +1037,7 @@ app-sidebar {
 
 .date-box input[type="date"]:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 table {
@@ -471,7 +1047,7 @@ table {
 }
 
 thead {
-    background: #f8fafc;
+    background: var(--table-header-bg);
 }
 
 th {
@@ -490,7 +1066,7 @@ td {
     text-align: left;
     font-size: 14px;
     color: var(--text-main);
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
 }
 
@@ -499,7 +1075,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-    background: #f8fafc;
+    background: var(--table-header-bg);
     transform: scale(1.002);
 }
 
@@ -518,29 +1094,29 @@ tbody tr:last-child td {
 }
 
 .status-present {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(4, 120, 87, 0.1);
     color: var(--success);
 }
 
 .status-late {
-    background: rgba(245, 158, 11, 0.1);
-    color: #d97706;
+    background: rgba(217, 119, 6, 0.12);
+    color: #b45309;
 }
 
 /* Dark orange/warning */
 .status-left-early {
-    background: rgba(249, 115, 22, 0.1);
-    color: #ea580c;
+    background: rgba(234, 88, 12, 0.1);
+    color: #c2410c;
 }
 
 .status-left {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(15, 118, 110, 0.12);
     color: var(--primary);
 }
 
 .status-absent {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
+    background: rgba(225, 29, 72, 0.1);
+    color: #be123c;
 }
 
 /* ---------- DYNAMIC STUDENT BUTTONS (Dashboard) ---------- */
@@ -561,7 +1137,7 @@ tbody tr:last-child td {
 }
 
 #studentButtons button {
-    background: white;
+    background: var(--input-bg);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     padding: 12px 20px;
@@ -602,20 +1178,25 @@ tbody tr:last-child td {
 .toast {
     position: fixed;
     top: 24px;
+    width: min(520px, calc(100vw - 48px));
     padding: 16px 24px;
     border-radius: 8px;
-    background: white;
+    background: var(--card-bg);
     color: var(--text-main);
     font-weight: 500;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     box-shadow: var(--shadow-lg);
     border-left: 4px solid var(--primary);
-    right: -300px;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    right: 24px;
+    transform: translateX(calc(100% + 24px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 9999;
 }
 
 .toast.show {
-    right: 24px;
+    transform: translateX(0);
 }
 
 .toast.success {
@@ -630,14 +1211,764 @@ tbody tr:last-child td {
     border-left-color: var(--warning);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .login-wrapper {
         flex-direction: column;
+        max-width: 460px;
     }
+
     .login-image-side {
         display: none;
     }
+
     .login-box {
-        padding: 40px 20px;
+        padding: 44px 26px;
+        border-radius: 24px;
     }
+}
+
+@media (max-height: 700px) {
+    .login-body {
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+}
+
+/* Honour reduced-motion preferences: keep the design, drop the motion */
+@media (prefers-reduced-motion: reduce) {
+
+    .login-aurora .blob,
+    .login-aurora .grid-glow,
+    .biometric-visual::before,
+    .scan-corner,
+    .fingerprint i,
+    .scan-line,
+    .brand-dot,
+    .login-mark::after,
+    .btn-spinner,
+    .status-dot.online {
+        animation: none;
+    }
+
+    .login-wrapper,
+    .login-box > *,
+    .login-box form > *,
+    .main > *,
+    .login-error {
+        animation: none;
+    }
+
+    .login-wrapper.is-tilting {
+        transform: none;
+    }
+
+    .login-btn:hover:not(:disabled),
+    .visual-stats li:hover,
+    .card:hover,
+    #studentButtons button:hover,
+    .sidebar nav a:hover,
+    tbody tr:hover {
+        transform: none;
+    }
+}
+
+/* ---------- SHARED MODAL (2.0) ---------- */
+/* The 1.9 modals in students.html and dashboard.html were styled inline with
+   hardcoded whites, which is exactly what broke under a dark theme. New dialogs
+   use these classes so they follow the palette. */
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+.modal-backdrop.show {
+    display: flex;
+}
+
+.modal-panel {
+    background: var(--card-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    padding: 28px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+
+.modal-panel.wide {
+    max-width: 720px;
+}
+
+.modal-panel h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.modal-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.form-row {
+    margin-bottom: 14px;
+}
+
+.form-row label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 16px 0;
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+}
+
+/* A boolean setting presented like the labelled text fields it sits between:
+   bordered strip, title on the checkbox's own line, explanation indented
+   underneath so it lines up with the title rather than the box. A bare
+   .checkbox-row left the two-line hint wrapping under the checkbox and the
+   whole block floating with no edge, which read as unfinished next to the
+   framed inputs above it. */
+.setting-toggle {
+    display: grid;
+    grid-template-columns: 17px minmax(0, 1fr);
+    gap: 6px 11px;
+    align-items: center;
+    padding: 13px 15px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--panel-bg);
+}
+
+/* ".table-box form input" gives every input in a card flex:1, min-width:200px
+   and a 12px/16px pad — right for the text fields, wrong for a checkbox. A plain
+   width:17px does not undo it: min-width floors the used width regardless of
+   which selector is more specific, so the box grew to 200px, spilled out of its
+   17px grid cell and slid underneath the label text. min-width and padding have
+   to be zeroed by name. */
+.setting-toggle input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    min-width: 0;
+    flex: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.setting-toggle > label {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.setting-toggle .toggle-hint {
+    grid-column: 2;
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 22px;
+}
+
+/* ---------- SHARED BUTTONS (2.0) ---------- */
+
+.btn {
+    padding: 11px 20px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    transition: var(--transition-std);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--text-main);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--table-header-bg);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+    filter: brightness(0.92);
+}
+
+/* For a bulk write that is not destructive — "Move Students" sits between the
+   teal of a preview and the red of a delete, and a transparent secondary button
+   read as disabled next to those two. */
+.btn-warning {
+    background: var(--warning-strong);
+    color: #ffffff;
+}
+
+.btn-warning:hover:not(:disabled) {
+    filter: brightness(1.12);
+}
+
+/* Compact icon buttons for per-row edit/delete in the attendance table */
+.btn-row {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-std);
+}
+
+.btn-row:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.btn-row.danger:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(225, 29, 72, 0.1);
+}
+
+.row-actions {
+    display: flex;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+/* ---------- MANUAL-ENTRY BADGE ---------- */
+/* Marks rows an administrator created or edited, so a corrected record is never
+   mistaken for a device punch. */
+
+.manual-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--warning);
+    background: rgba(217, 119, 6, 0.14);
+    border: 1px solid rgba(217, 119, 6, 0.3);
+    vertical-align: middle;
+}
+
+/* Same shape, muted: marks a graduated student kept only for their history. */
+.archived-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--table-header-bg);
+    border: 1px solid var(--border-color);
+    vertical-align: middle;
+    font-style: normal;
+}
+
+/* ---------- PANELS & NOTICES ---------- */
+
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 18px;
+}
+
+.panel.danger {
+    background: var(--panel-danger-bg);
+    border-color: rgba(225, 29, 72, 0.28);
+}
+
+.panel.info {
+    background: var(--panel-info-bg);
+    border-color: rgba(15, 118, 110, 0.24);
+}
+
+.notice-banner {
+    display: none;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    border-radius: 10px;
+    background: rgba(217, 119, 6, 0.12);
+    border: 1px solid rgba(217, 119, 6, 0.34);
+    color: var(--text-main);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.notice-banner.show {
+    display: flex;
+}
+
+.notice-banner a {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.notice-banner .notice-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+/* ---------- IMPORT RESULT TABLE ---------- */
+
+.import-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0 12px;
+}
+
+.import-chip {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: var(--panel-bg);
+}
+
+.import-chip.added {
+    color: var(--success);
+    background: rgba(4, 120, 87, 0.1);
+    border-color: rgba(4, 120, 87, 0.28);
+}
+
+.import-chip.skipped {
+    color: var(--warning);
+    background: rgba(217, 119, 6, 0.12);
+    border-color: rgba(217, 119, 6, 0.3);
+}
+
+.import-chip.failed {
+    color: var(--danger);
+    background: rgba(225, 29, 72, 0.1);
+    border-color: rgba(225, 29, 72, 0.28);
+}
+
+.import-log {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.import-log table {
+    font-size: 13px;
+}
+
+.import-log td,
+.import-log th {
+    padding: 9px 12px;
+}
+
+.file-drop {
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    transition: var(--transition-std);
+}
+
+.file-drop.dragover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-soft);
+    border: 1px solid rgba(15, 118, 110, 0.26);
+}
+
+.tag button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+}
+
+.tag button:hover {
+    opacity: 1;
+}
+
+/* ── Class tools (students page) ─────────────────────────────────────────────
+   Three panels side by side on a desktop window, stacked when the window is
+   narrow. The destructive one is tinted so it does not read as just another
+   form. */
+
+.class-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 4px;
+    align-items: center;
+}
+
+.count-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    background: var(--table-header-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.count-chip strong {
+    font-size: 14px;
+}
+
+.count-chip .count-value {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.count-chip.archived .count-value {
+    color: var(--text-muted);
+}
+
+.class-tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.class-tool-panel {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    background: var(--table-header-bg);
+    display: flex;
+    flex-direction: column;
+}
+
+.class-tool-panel.danger {
+    border-color: rgba(225, 29, 72, 0.32);
+    background: rgba(225, 29, 72, 0.05);
+}
+
+.class-tool-panel h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+.class-tool-panel p {
+    margin: 0 0 12px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+/* The button rides in a footer that soaks up the panel's spare height, so the
+   three tools line up on one baseline even though their controls are different
+   heights. padding-top keeps a gap on the tallest panel, where there is no
+   spare height left for margin-top:auto to claim. */
+.class-tool-panel .tool-actions {
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.class-tool-panel .btn {
+    align-self: flex-start;
+}
+
+.tool-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* The promotion preview. Shown before anything is written, because the moves
+   are derived from the order of the class list and that is worth checking. */
+.tool-plan {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg);
+    font-size: 13px;
+}
+
+.tool-plan h5 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+.tool-plan ul {
+    margin: 0 0 10px;
+    padding-left: 18px;
+    line-height: 1.7;
+    color: var(--text-main);
+}
+
+.tool-plan .plan-graduating {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.tool-plan .plan-empty {
+    color: var(--text-muted);
+}
+
+.inline-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.inline-check input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* Archived (graduated) students stay readable but visibly set apart from the
+   active roster. */
+tr.is-archived td {
+    opacity: 0.62;
+    font-style: italic;
+}
+
+/* ── Message templates (settings page) ───────────────────────────────────────
+   One full-width strip per attendance status: a narrow left rail carrying the
+   status name, its short phrase and the two buttons, with the message body
+   filling the rest of the row. The earlier two-column grid of tall boxes made
+   five squares roughly a screen and a half deep and pushed Save far below the
+   fold; laying each status out sideways uses the width that is already there. */
+
+.tpl-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.tpl-panel {
+    display: grid;
+    grid-template-columns: 215px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--table-header-bg);
+}
+
+/* Below this the two columns are too cramped for a Marathi paragraph, so the
+   rail drops above the body instead. */
+@media (max-width: 900px) {
+    .tpl-panel {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+}
+
+/* Nothing in either column should add trailing space — the panel's own padding
+   is the bottom margin. In the rail the form-row is not the last child (the
+   buttons are), so it gets zeroed by hand and .tpl-actions' own margin-top
+   becomes the single gap rather than stacking on top of 14px. */
+.tpl-panel .form-row:last-child,
+.tpl-side .form-row {
+    margin-bottom: 0;
+}
+
+/* Both columns start at the top of the row, and the textarea stretches to
+   whatever height the rail needs so the two never end on ragged edges. */
+.tpl-main {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tpl-main .form-row {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.tpl-panel h5 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Devanagari at 13px in the browser default sans is hard to proofread, so the
+   bodies get a slightly larger size and generous line height rather than the
+   monospace an editor would normally use — no monospace face on Windows covers
+   Devanagari, and falling back mid-string looks broken. */
+.tpl-body {
+    min-height: 104px;
+    resize: vertical;
+    line-height: 1.65;
+    font-size: 13.5px;
+    font-family: inherit;
+}
+
+.tpl-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.tpl-actions .btn {
+    padding: 7px 12px;
+    font-size: 12.5px;
+}
+
+.placeholder-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.placeholder-chip {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(15, 118, 110, 0.3);
+    background: var(--card-bg);
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: Consolas, "Courier New", monospace;
+    cursor: pointer;
+    transition: var(--transition-std);
+}
+
+.placeholder-chip:hover {
+    background: var(--primary-soft);
+}
+
+/* The rendered preview. white-space: pre-wrap so the blank lines that separate
+   the greeting, body and sign-off survive — they are what makes the email
+   readable, and collapsing them would misrepresent what parents receive. */
+.preview-box {
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--panel-bg);
+    color: var(--text-main);
+    font-size: 13.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.preview-body {
+    max-height: 42vh;
+    overflow-y: auto;
 }

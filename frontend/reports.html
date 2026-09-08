@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports</title>
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <title data-i18n="nav.reports">Reports</title>
+    <link rel="stylesheet" href="css/style.css?v=10">
+    <script src="js/i18n.js?v=1"></script>
 </head>
 
 <body>
@@ -13,85 +14,90 @@
     <app-sidebar></app-sidebar>
 
     <div class="main">
-        <h1 class="page-title">Reports</h1>
+        <h1 class="page-title" data-i18n="rep.title">Reports</h1>
 
         <!-- INFO CARDS -->
         <div class="cards">
             <div class="card">
-                <p>Total Working Days</p>
+                <p data-i18n="rep.workingDays">Total Working Days</p>
                 <h2 id="total-days">—</h2>
             </div>
 
             <div class="card present">
-                <p>Average Attendance</p>
+                <p data-i18n="rep.avgAttendance">Average Attendance</p>
                 <h2 id="avg-attendance">—</h2>
             </div>
 
             <div class="card absent">
-                <p>Average Absent</p>
+                <p data-i18n="rep.avgAbsent">Average Absent</p>
                 <h2 id="low-attendance">—</h2>
             </div>
         </div>
 
         <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 15px; background: var(--card-bg); padding: 15px 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="report-month" style="font-weight: 600; color: var(--text-main);">Select Month:</label>
+                <label for="report-month" style="font-weight: 600; color: var(--text-main);"><span data-i18n="common.selectMonth">Select Month</span>:</label>
                 <input type="month" id="report-month" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std);">
             </div>
-            
+
             <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="report-standard" style="font-weight: 600; color: var(--text-main);">Standard:</label>
-                <select id="report-standard" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none;">
-                    <option value="All">All</option>
-                    <option value="11th">11th</option>
-                    <option value="12th">12th</option>
+                <label for="report-standard" style="font-weight: 600; color: var(--text-main);"><span data-i18n="common.standard">Standard</span>:</label>
+                <!-- Options come from the class list in Settings (see populateStandardSelects). -->
+                <select id="report-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none;">
+                    <option value="All" data-i18n="common.all">All</option>
                 </select>
             </div>
         </div>
 
         <!-- EXPORT ACTION BUTTONS -->
-        <div style="margin-bottom: 25px; display: flex; gap: 10px;">
-            <button id="btn-export-csv" class="btn-mark"
-                style="background-color: #28a745; border: none; padding: 10px 20px; color: white; border-radius: 5px; cursor: pointer;">📥
-                Download Excel (CSV)</button>
-            <button id="btn-export-pdf" class="btn-mark"
-                style="background-color: #dc3545; border: none; padding: 10px 20px; color: white; border-radius: 5px; cursor: pointer;">📄
-                Download PDF</button>
+        <!-- The .xlsx is built server-side by openpyxl: a real workbook with a
+             summary sheet, a day-by-day grid and the raw punch log. The CSV stays
+             for anything that needs to read the numbers as plain text. -->
+        <div class="export-bar">
+            <button id="btn-export-xlsx" class="btn-mark btn-pill btn-xlsx">📊
+                <span data-i18n="rep.downloadXlsx">Download Excel (.xlsx)</span></button>
+            <button id="btn-export-csv" class="btn-mark btn-pill btn-csv">📥
+                <span data-i18n="rep.downloadCsv">Download CSV</span></button>
+            <button id="btn-export-pdf" class="btn-mark btn-pill btn-pdf">📄
+                <span data-i18n="rep.downloadPdf">Download PDF</span></button>
         </div>
 
         <!-- STUDENT ATTENDANCE TABLE -->
         <div class="table-box">
-            <h3 id="table-report-title">Student Attendance Report</h3>
+            <h3 id="table-report-title" data-i18n="rep.tableTitle">Student Attendance Report</h3>
 
             <table>
                 <thead>
                     <tr>
-                        <th>ZK ID</th>
-                        <th>Student Name</th>
-                        <th>Standard</th>
-                        <th>Days Present</th>
-                        <th>Attendance %</th>
+                        <th data-i18n="common.zkId">ZK ID</th>
+                        <th data-i18n="common.studentName">Student Name</th>
+                        <th data-i18n="common.standard">Standard</th>
+                        <th data-i18n="rep.daysPresent">Days Present</th>
+                        <th data-i18n="rep.attendancePct">Attendance %</th>
                     </tr>
                 </thead>
                 <tbody id="student-summary-body">
-                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
                 </tbody>
             </table>
-            
+
             <!-- Pagination Controls -->
+            <!-- Also .btn-pill: without it these inherit .btn-mark's 100% width
+                 and each page button spans the table. -->
             <div id="pagination-controls" style="display: flex; justify-content: flex-end; align-items: center; gap: 15px; margin-top: 15px;">
-                <button id="btn-prev-page" class="btn-mark" style="background-color: var(--primary); border: none; padding: 6px 12px; color: white; border-radius: 4px; cursor: pointer; display: none;">Previous</button>
-                <span id="page-info" style="font-size: 14px; font-weight: 500; display: none;">Page 1 of 1</span>
-                <button id="btn-next-page" class="btn-mark" style="background-color: var(--primary); border: none; padding: 6px 12px; color: white; border-radius: 4px; cursor: pointer; display: none;">Next</button>
+                <button id="btn-prev-page" class="btn-mark btn-pill" style="display: none;" data-i18n="rep.previous">Previous</button>
+                <!-- renderTablePage() fills this before it is ever shown. -->
+                <span id="page-info" style="font-size: 14px; font-weight: 500; display: none;"></span>
+                <button id="btn-next-page" class="btn-mark btn-pill" style="display: none;" data-i18n="rep.next">Next</button>
             </div>
         </div>
     </div>
 
     <!-- PDF Generation Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="js/sidebar.js?v=5"></script>
-    <script src="js/reports.js?v=7"></script>
+    <script src="js/jspdf.umd.min.js"></script>
+    <script src="js/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/reports.js?v=10"></script>
 </body>
 
 </html>

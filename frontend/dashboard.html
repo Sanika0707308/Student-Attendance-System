@@ -4,8 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Dashboard</title>
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <!-- loadInstituteSettings() replaces this with "<institute> Dashboard"; the
+         tag is translated so the window title is right before /api/settings answers. -->
+    <title data-i18n="dash.title">Attendance Dashboard</title>
+    <link rel="stylesheet" href="css/style.css?v=10">
+    <!-- Loaded in <head>, before anything renders, so a Marathi reload never
+         flashes English first — the same reason the theme is applied early. -->
+    <script src="js/i18n.js?v=1"></script>
 </head>
 
 <body>
@@ -15,11 +20,28 @@
 
     <!-- MAIN CONTENT -->
     <div class="main">
-        <h1 class="page-title">
-            Dashboard 
-            <span id="device-status-badge" style="font-size: 12px; margin-left: 15px; background: rgba(0,0,0,0.05); padding: 5px 12px; border-radius: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+        <!-- First-run password warning. Shown when the account is still on the
+             shipped admin/admin credentials (login.js records this from the API
+             response). Deliberately a dismissible banner rather than a forced
+             redirect: a hard block on a locally-installed school app is hostile,
+             and the data is already behind a real session. -->
+        <div class="notice-banner" id="password-notice">
+            <span>🔐 <span data-i18n-html="dash.passwordNotice">This installation is still using the default password
+                    <b>admin / admin</b>. <a href="settings.html#change-password">Change it in Settings</a>
+                    so attendance data is not open to anyone who opens the app.</span></span>
+            <button type="button" class="notice-close" id="password-notice-close"
+                data-i18n-aria="dash.dismiss" data-i18n-title="dash.dismiss"
+                aria-label="Dismiss this warning" title="Dismiss">&times;</button>
+        </div>
+
+        <h1 class="page-title" id="dashboard-title">
+            <!-- data-i18n is the fallback: loadInstituteSettings() overwrites this
+                 with "<institute> Dashboard" once /api/settings answers, so a
+                 failed request still leaves a translated heading. -->
+            <span id="dashboard-title-text" data-i18n="dash.title">Biometric Attendance Dashboard</span>
+            <span id="device-status-badge" style="font-size: 12px; margin-left: 15px; background: var(--table-header-bg); padding: 5px 12px; border-radius: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
                 <span id="status-dot" class="status-dot offline"></span>
-                <span id="status-text">Device Offline</span>
+                <span id="status-text" data-i18n="device.offlineLabel">Device Offline</span>
             </span>
         </h1>
 
@@ -27,30 +49,37 @@
         <!-- INFO CARDS -->
         <div class="cards">
             <div class="card">
-                <p>Total Students</p>
+                <p data-i18n="dash.totalStudents">Total Students</p>
                 <h2 id="total">—</h2>
             </div>
 
             <div class="card present">
-                <p>Present</p>
+                <p data-i18n="dash.present">Present</p>
                 <h2 id="present">—</h2>
             </div>
 
             <div class="card absent">
-                <p>Absent</p>
+                <p data-i18n="dash.absent">Absent</p>
                 <h2 id="absent">—</h2>
             </div>
-            
+
             <div class="card" style="border-left: 5px solid var(--warning);">
-                <p>Emails Failed</p>
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <p data-i18n="dash.emailsFailed">Emails Failed</p>
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap: 10px;">
                     <div>
                         <h2 id="emails-failed">—</h2>
-                        <span id="view-failed-emails" onclick="viewFailedEmails()" style="font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: underline; display: none;">View List</span>
+                        <span id="view-failed-emails" onclick="viewFailedEmails()" data-i18n="dash.viewList" style="font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: underline; display: none;">View List</span>
                     </div>
-                    <button onclick="retryEmails()" id="btn-retry-emails" style="background-color:var(--warning); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:12px; display:none;">
-                        Retry Sending
-                    </button>
+                    <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                        <button onclick="retryEmails()" id="btn-retry-emails" data-i18n="dash.retrySending" style="background-color:var(--warning); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:12px; display:none;">
+                            Retry Sending
+                        </button>
+                        <!-- Only shown when "Allow Retry All Failed in bulk" is enabled in
+                             Settings; the endpoint returns 403 otherwise. -->
+                        <button onclick="retryAllEmails()" id="btn-retry-all-emails" data-i18n="dash.retryAll" style="background-color:transparent; color:var(--text-muted); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:600; font-size:11px; display:none;">
+                            Retry All (any age)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -58,9 +87,9 @@
         <!-- ATTENDANCE TABLE -->
         <div class="table-box">
             <div class="table-header">
-                <h3>Attendance Records</h3>
+                <h3 data-i18n="dash.records">Attendance Records</h3>
                 <div class="date-box">
-                    <label for="attendance-date">Select Date:</label>
+                    <label for="attendance-date"><span data-i18n="common.selectDate">Select Date</span>:</label>
                     <input type="date" id="attendance-date" onchange="showDateRecords()">
                 </div>
             </div>
@@ -68,34 +97,35 @@
             <table id="attendance-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Name</th>
-                        <th>IN Time</th>
-                        <th>OUT Time</th>
-                        <th>Status</th>
+                        <th data-i18n="common.date">Date</th>
+                        <th data-i18n="common.name">Name</th>
+                        <th data-i18n="common.inTime">IN Time</th>
+                        <th data-i18n="common.outTime">OUT Time</th>
+                        <th data-i18n="common.status">Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Loading...</td></tr>
+                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <!-- FAILED EMAILS MODAL -->
-    <div id="failedEmailsModal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
-        <div style="background-color:white; padding:30px; border-radius:12px; width:90%; max-width:600px; max-height:80vh; overflow-y:auto; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+    <div id="failedEmailsModal" class="modal-backdrop">
+        <div class="modal-panel wide">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="margin:0;">Failed Email Records</h2>
-                <span onclick="closeFailedEmailsModal()" style="font-size:30px; cursor:pointer; color:#666;">&times;</span>
+                <h2 style="margin:0; font-size:20px;" data-i18n="dash.failedTitle">Failed Email Records</h2>
+                <span onclick="closeFailedEmailsModal()" style="font-size:30px; cursor:pointer; color:var(--text-muted);">&times;</span>
             </div>
             <div id="failed-emails-list">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
-                        <tr style="text-align:left; border-bottom:2px solid #eee;">
-                            <th style="padding:10px;">Student Name</th>
-                            <th style="padding:10px;">Punch Time</th>
-                            <th style="padding:10px;">Status</th>
+                        <tr style="text-align:left; border-bottom:2px solid var(--border-color);">
+                            <th style="padding:10px;" data-i18n="common.studentName">Student Name</th>
+                            <th style="padding:10px;" data-i18n="dash.punchTime">Punch Time</th>
+                            <th style="padding:10px;" data-i18n="common.status">Status</th>
+                            <th style="padding:10px;" data-i18n="dash.failureReason">Failure Reason</th>
                         </tr>
                     </thead>
                     <tbody id="failed-emails-body">
@@ -103,14 +133,14 @@
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top:25px; text-align:right;">
-                <button onclick="closeFailedEmailsModal()" style="padding:10px 20px; background:#f1f5f9; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Close</button>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeFailedEmailsModal()" data-i18n="common.close">Close</button>
             </div>
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=5"></script>
-    <script src="js/dashboard.js?v=5"></script>
+    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/dashboard.js?v=8"></script>
 </body>
 
 </html>

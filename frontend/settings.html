@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings</title>
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <title data-i18n="nav.settings">Settings</title>
+    <link rel="stylesheet" href="css/style.css?v=10">
+    <script src="js/i18n.js?v=1"></script>
 </head>
 
 <body>
@@ -15,129 +16,429 @@
 
     <!-- MAIN CONTENT -->
     <div class="main">
-        <h1 class="page-title">System Settings</h1>
+        <h1 class="page-title" data-i18n="set.title">System Settings</h1>
 
-        <div class="table-box" style="max-width: fit-content; margin: 0 auto; padding: 30px;">
-            <h3>Configuration</h3>
+        <!-- ACCOUNT SECURITY -->
+        <!-- Its own <form>, deliberately outside #settingsForm: nested forms are
+             invalid HTML, and a password change must not be bundled into the
+             "Save Settings" round trip. The dashboard's first-run banner links
+             straight to #change-password. -->
+        <div class="table-box" id="change-password" style="max-width: 1100px; margin: 0 auto 30px;">
+            <h3>🔒 <span data-i18n="set.accountSecurity">Account Security</span></h3>
+            <hr><br>
+            <form id="passwordForm" style="display: block;">
+                <small style="color: var(--text-muted); display: block; margin-bottom: 15px;"
+                    data-i18n-html="set.passwordHint">
+                    This is the password for the <b>admin</b> sign-in on the login screen. A fresh
+                    installation ships with <b>admin / admin</b> — change it before the app is used
+                    on a shared computer.
+                </small>
+
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="current_password" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.currentPassword">Current Password</label>
+                        <input type="password" id="current_password" class="input-field" autocomplete="current-password"
+                            placeholder="Current password" data-i18n-placeholder="set.currentPasswordPh" style="width: 100%;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="new_password" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.newPassword">New Password</label>
+                        <input type="password" id="new_password" class="input-field" autocomplete="new-password"
+                            placeholder="At least 4 characters" data-i18n-placeholder="set.newPasswordPh" style="width: 100%;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="confirm_password" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirm_password" class="input-field" autocomplete="new-password"
+                            placeholder="Repeat new password" data-i18n-placeholder="set.confirmPasswordPh" style="width: 100%;">
+                    </div>
+                </div>
+
+                <button type="submit" id="btnChangePassword" class="btn btn-primary"
+                    style="margin-top: 18px;" data-i18n="set.changePassword">Change Password</button>
+            </form>
+        </div>
+
+        <!-- Same max-width as the Account Security card above so the two line up.
+             This used to be max-width: fit-content, which sized the card to
+             whatever the flex form below happened to lay out as — the reason the
+             sections rendered at ragged widths instead of a tidy column. -->
+        <div class="table-box" style="max-width: 1100px; margin: 0 auto; padding: 30px;">
+            <h3 data-i18n="set.configuration">Configuration</h3>
             <hr><br>
 
-            <form id="settingsForm">
+            <!-- display: block on purpose, like #passwordForm above. The shared
+                 ".table-box form" rule is a row-flex meant for one-line forms such
+                 as Add Student; applied to this page it turned every section into a
+                 content-width flex item that wrapped wherever it fit, and
+                 align-items: center then vertically centred blocks of unequal
+                 height against each other. -->
+            <form id="settingsForm" style="display: block;">
                 <div style="margin-bottom: 20px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">Institute Name</label>
-                    <input type="text" id="institute_name" class="input-field" placeholder="e.g. ABC Public School"
-                        style="width: 100%;">
-                    <small style="color: gray;">This name will appear on all reports and downloads.</small>
+                    <label for="institute_name" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.instituteName">Institute Name</label>
+                    <input type="text" id="institute_name" class="input-field" placeholder="e.g. Sunrise Attendance Centre"
+                        data-i18n-placeholder="set.instituteNamePh" style="width: 100%;">
+                    <small style="color: gray;" data-i18n="set.instituteNameHint">This name appears on the login page, dashboard, reports, and attendance emails.</small>
+                </div>
+
+                <!-- DISPLAY LANGUAGE -->
+                <!-- Applied on Save rather than on change: setLang() reloads the page,
+                     and a reload part-way through this long form would throw away
+                     everything else typed into it. The sidebar's 🌐 button remains the
+                     instant switch for anyone who just wants to flip language. -->
+                <div style="margin-bottom: 20px;">
+                    <label for="ui_language" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.language">Display Language</label>
+                    <select id="ui_language" class="input-field" style="width: 100%;">
+                        <option value="en" data-i18n="set.english">English</option>
+                        <option value="mr" data-i18n="set.marathi">मराठी (Marathi)</option>
+                    </select>
+                    <small style="color: gray;" data-i18n="set.languageSaveHint">Applied when you press Save Settings. The 🌐 button in the sidebar switches language straight away without saving anything else.</small>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">ZKTeco K40 Pro IP Address</label>
+                    <label for="zk_ip_address" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.deviceIp">ZKTeco K40 Pro IP Address</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" id="zk_ip_address" class="input-field" placeholder="e.g. 192.168.1.100"
-                            style="flex: 1;">
+                            data-i18n-placeholder="set.deviceIpPh" style="flex: 1;">
                         <button type="button" id="btnTestConnection"
-                            style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Test
-                            Connection</button>
+                            style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;"
+                            data-i18n="set.testConnection">Test Connection</button>
                     </div>
-                    <small style="color: gray;">Ensure the device is on the same local network.</small>
+                    <small style="color: gray;" data-i18n="set.deviceIpHint">Ensure the device is on the same local network.</small>
                 </div>
 
                 <br>
-        
+
+                <!-- CLASS LIST -->
+                <!-- Feeds every standard dropdown in the app (students, attendance,
+                     reports, holidays) through /api/settings/standards, so classes are
+                     no longer hardcoded as 11th/12th in seven places. -->
                 <div>
-                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Time Bound
-                    Configurations</h4>
+                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                        🎓 <span data-i18n="set.classList">Class List</span></h4>
+                    <small style="color: gray; display: block; margin-bottom: 12px;" data-i18n="set.classListHint">The classes this institute runs.
+                        Every standard dropdown — students, attendance, reports and holidays — is filled from this list.
+                        Removing a class here does not delete its students; they keep their existing standard until you
+                        edit them.</small>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" id="new_standard" class="input-field" placeholder="e.g. 10th"
+                            data-i18n-placeholder="set.newClassPh" maxlength="30" style="flex: 1; min-width: 160px;">
+                        <button type="button" id="btnAddStandard"
+                            style="padding: 10px 20px; background: var(--success); color: white; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;"
+                            data-i18n="set.addClass">Add Class</button>
+                    </div>
+                    <div class="tag-list" id="standards-list">
+                        <!-- Populated by settings.js -->
+                    </div>
+                    <small style="color: var(--text-muted); display: block; margin-top: 10px;"
+                        data-i18n-html="set.classListApplyHint">Changes take effect when
+                        you press <b>Save Settings</b> at the bottom of this page.</small>
+                </div>
+
+                <br>
+
+                <div>
+                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;"
+                        data-i18n="set.timingHeading">Time Bound Configurations</h4>
                     <div style="display: flex; gap: 20px; margin-bottom: 20px;">
                     <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">Morning IN Time
-                            Bound</label>
+                        <label for="in_time" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.inTime">Morning IN Time Bound</label>
                         <input type="time" id="in_time" class="input-field"
                             style="width: 100%;">
-                        <small style="color: gray;">Time when late/absent checks trigger.</small>
+                        <small style="color: gray;" data-i18n="set.inTimeHint">Time when late/absent checks trigger.</small>
                     </div>
                     <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">MID Time
-                            Bound</label>
+                        <label for="mid_time" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.midTimeBound">MID Time Bound</label>
                         <input type="time" id="mid_time" class="input-field"
                             style="width: 100%;">
-                        <small style="color: gray;">Time to distinguish late arrivals vs early departures.</small>
+                        <small style="color: gray;" data-i18n="set.midTimeHint">Time to distinguish late arrivals vs early departures.</small>
                     </div>
                     <div style="flex: 1;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: bold;">Afternoon OUT Time
-                            Bound</label>
+                        <label for="out_time" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                            data-i18n="set.outTime">Afternoon OUT Time Bound</label>
                         <input type="time" id="out_time" class="input-field"
                             style="width: 100%;">
-                        <small style="color: gray;">Time marking end of official classes.</small>
+                        <small style="color: gray;" data-i18n="set.outTimeHint">Time marking end of official classes.</small>
                     </div>
                 </div>
                 </div>
 
                 <br>
-                <h4 style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">SMTP Email Settings
-                    (e.g. Gmail)</h4>
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;"
+                    data-i18n="set.smtpHeading">SMTP Email Settings (e.g. Gmail)</h4>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">Sender Email
-                        (SMTP_USERNAME)</label>
+                    <label for="smtp_email" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.senderEmail">Sender Email (SMTP_USERNAME)</label>
                     <input type="email" id="smtp_email" class="input-field" placeholder="school@gmail.com"
-                        style="width: 100%;">
+                        data-i18n-placeholder="set.senderEmailPh" style="width: 100%;">
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="display:block; margin-bottom: 5px; font-weight: bold;">App Password
-                        (SMTP_PASSWORD)</label>
+                    <label for="smtp_password" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.appPassword">App Password (SMTP_PASSWORD)</label>
                     <input type="password" id="smtp_password" class="input-field"
-                        placeholder="16-character App Password"
+                        placeholder="16-character App Password" data-i18n-placeholder="set.appPasswordPh"
                         style="width: 100%;">
-                    <small style="color: gray;">Do not use your regular password. Generate an App Password in your
+                    <small style="color: gray;" data-i18n="set.appPasswordHint">Do not use your regular password. Generate an App Password in your
                         Google Account Security settings.</small>
                 </div>
 
-                <div
-                    style="margin-top: 30px; padding: 20px; border: 1px dashed var(--danger); border-radius: 8px; background-color: #fef2f2;">
-                    <h4 style="color: var(--danger); margin-bottom: 5px;">🔥 Danger Zone</h4>
-                    <small style="color: gray; display: block; margin-bottom: 10px;">If the ZKTeco hardware is running
-                        out of memory (100k limit), use this button to safely wipe the machine. The local SQLite records
-                        will be retained.</small>
-                    <button type="button" id="btnClearLogs"
-                        style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;">Wipe
-                        ZKTeco Logs</button>
-                    <p id="wipeMessage" style="margin-top: 5px; font-weight: bold; font-size: 0.9em;"></p>
+                <!-- EMAIL RETRY POLICY -->
+                <!-- Both of these were accepted by the API but never saved before 2.0,
+                     so the retry window was permanently stuck at 24 hours and the
+                     dashboard's "Retry all" button could never be enabled. -->
+                <div style="margin-bottom: 20px;">
+                    <label for="email_retry_window_hours" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.retryWindow">Failed Email Retry Window (hours)</label>
+                    <input type="number" id="email_retry_window_hours" class="input-field" min="1" max="8760" step="1"
+                        placeholder="24" style="width: 100%;">
+                    <small style="color: gray;" data-i18n="set.retryWindowHint">How far back a failed parent notification can still be retried from the
+                        Dashboard. Older failures are left alone so an old batch cannot be resent by accident.</small>
                 </div>
-                <div style="margin-top: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa;">
-                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">🏖️ Holiday Management</h4>
-                    <small style="color: gray; display: block; margin-bottom: 15px;">Add specific dates where students should not be marked absent automatically.</small>
-                    
-                    <!-- Single date row -->
-                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;">Single Day</p>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                        <input type="date" id="holiday_date" class="input-field" style="flex: 1; min-width: 140px;">
-                        <input type="text" id="holiday_desc" class="input-field" placeholder="e.g. Diwali" style="flex: 2; min-width: 160px;">
-                        <button type="button" id="btnAddHoliday" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Holiday</button>
+
+                <div class="setting-toggle">
+                    <input type="checkbox" id="admin_retry_all_allowed">
+                    <label for="admin_retry_all_allowed" data-i18n="set.allowRetryAll">Allow "Retry All Failed" in bulk.</label>
+                    <p class="toggle-hint" data-i18n="set.retryAllHint">Off by default: with
+                        it off, failures are retried one at a time, which makes a misconfigured SMTP account far
+                        harder to turn into a hundred bounced emails.</p>
+                </div>
+
+                <!-- PARENT NOTIFICATION MESSAGES -->
+                <!-- 1.9 let an institute change five words and nothing else. 2.0 makes
+                     the whole body editable per status, with the old msg_* settings kept
+                     as the {status} placeholder so an existing customisation survives the
+                     upgrade and produces the same email. -->
+                <br>
+                <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;"
+                    data-i18n="set.messagesHeading">Parent Notification Messages</h4>
+                <small style="color: gray; display: block; margin-bottom: 15px;" data-i18n-html="set.messagesIntro">This wording is used <b>only</b> in the emails sent to parents, so it can be written in Marathi. The Dashboard, Attendance table and Reports follow the display language above, not this section.</small>
+
+                <div style="margin-bottom: 18px;">
+                    <label for="email_subject" style="display:block; margin-bottom: 5px; font-weight: bold;"
+                        data-i18n="set.subjectLabel">Email Subject</label>
+                    <input type="text" id="email_subject" class="input-field" style="width: 100%;">
+                </div>
+
+                <!-- Placeholder reference. Filled from /api/settings/message-placeholders
+                     so the list can never drift from what the renderer actually
+                     substitutes; the static rows below are the offline fallback. -->
+                <div class="panel info" style="margin-bottom: 18px;">
+                    <p style="margin: 0 0 8px; font-weight: 600; font-size: 13px;">
+                        <span data-i18n="set.placeholders">Available placeholders</span>
+                        <span style="font-weight: 400; color: var(--text-muted);"> — <span data-i18n="set.placeholdersHint">Click a placeholder to copy it.</span></span>
+                    </p>
+                    <div class="placeholder-list" id="placeholder-ref">
+                        <button type="button" class="placeholder-chip" data-token="{student}">{student}</button>
+                        <button type="button" class="placeholder-chip" data-token="{status}">{status}</button>
+                        <button type="button" class="placeholder-chip" data-token="{date}">{date}</button>
+                        <button type="button" class="placeholder-chip" data-token="{time}">{time}</button>
+                        <button type="button" class="placeholder-chip" data-token="{institute}">{institute}</button>
+                    </div>
+                </div>
+
+                <p style="font-weight: bold; margin: 0 0 6px; font-size: 0.9em;" data-i18n="set.statusWords">Status Words</p>
+                <small style="color: var(--text-muted); display: block; margin-bottom: 14px;"
+                    data-i18n-html="set.statusWordsHint">The short phrase that fills the <code>{status}</code> placeholder in the message bodies below. Leaving these alone keeps the wording every parent already receives.</small>
+
+                <p style="font-weight: bold; margin: 0 0 6px; font-size: 0.9em;" data-i18n="set.messageTemplates">Message Templates</p>
+                <small style="color: var(--text-muted); display: block; margin-bottom: 14px;"
+                    data-i18n="set.templatesHint">The full message for each status — greeting, sentence and sign-off, all of it. Placeholders are replaced when the email is sent.</small>
+
+                <!-- One panel per status the attendance engine produces. Hardcoded
+                     rather than generated: the five statuses come from
+                     message_templates.STATUS_FIELDS and are not user-configurable, and
+                     building them in JS would mean loadSettings() could find no boxes
+                     to fill if that one request failed.
+                     Each panel is a two-column strip — .tpl-side carries the status
+                     name, its short phrase and the buttons; .tpl-main carries the
+                     message body. -->
+                <div class="tpl-editor">
+                    <section class="tpl-panel">
+                        <div class="tpl-side">
+                            <h5 data-i18n="status.Present">Present</h5>
+                            <div class="form-row">
+                                <label for="msg_present" data-i18n="set.statusWordLabel">Short status phrase</label>
+                                <input type="text" id="msg_present" class="input-field">
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="button" class="btn btn-secondary" data-preview-status="Present" data-i18n="set.preview">Preview</button>
+                                <button type="button" class="btn btn-secondary" data-restore-status="Present" data-i18n="set.restoreDefault">Restore Default</button>
+                            </div>
+                        </div>
+                        <div class="tpl-main">
+                            <div class="form-row">
+                                <label for="tpl_present" data-i18n="set.bodyLabel">Full message</label>
+                                <textarea id="tpl_present" class="input-field tpl-body" rows="5" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="tpl-panel">
+                        <div class="tpl-side">
+                            <h5 data-i18n="status.Late">Late</h5>
+                            <div class="form-row">
+                                <label for="msg_late" data-i18n="set.statusWordLabel">Short status phrase</label>
+                                <input type="text" id="msg_late" class="input-field">
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="button" class="btn btn-secondary" data-preview-status="Late" data-i18n="set.preview">Preview</button>
+                                <button type="button" class="btn btn-secondary" data-restore-status="Late" data-i18n="set.restoreDefault">Restore Default</button>
+                            </div>
+                        </div>
+                        <div class="tpl-main">
+                            <div class="form-row">
+                                <label for="tpl_late" data-i18n="set.bodyLabel">Full message</label>
+                                <textarea id="tpl_late" class="input-field tpl-body" rows="5" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="tpl-panel">
+                        <div class="tpl-side">
+                            <h5 data-i18n="status.Absent">Absent</h5>
+                            <div class="form-row">
+                                <label for="msg_absent" data-i18n="set.statusWordLabel">Short status phrase</label>
+                                <input type="text" id="msg_absent" class="input-field">
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="button" class="btn btn-secondary" data-preview-status="Absent" data-i18n="set.preview">Preview</button>
+                                <button type="button" class="btn btn-secondary" data-restore-status="Absent" data-i18n="set.restoreDefault">Restore Default</button>
+                            </div>
+                        </div>
+                        <div class="tpl-main">
+                            <div class="form-row">
+                                <label for="tpl_absent" data-i18n="set.bodyLabel">Full message</label>
+                                <textarea id="tpl_absent" class="input-field tpl-body" rows="5" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="tpl-panel">
+                        <div class="tpl-side">
+                            <h5 data-i18n="status.LeftEarly">Left Early</h5>
+                            <div class="form-row">
+                                <label for="msg_left_early" data-i18n="set.statusWordLabel">Short status phrase</label>
+                                <input type="text" id="msg_left_early" class="input-field">
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="button" class="btn btn-secondary" data-preview-status="Left Early" data-i18n="set.preview">Preview</button>
+                                <button type="button" class="btn btn-secondary" data-restore-status="Left Early" data-i18n="set.restoreDefault">Restore Default</button>
+                            </div>
+                        </div>
+                        <div class="tpl-main">
+                            <div class="form-row">
+                                <label for="tpl_left_early" data-i18n="set.bodyLabel">Full message</label>
+                                <textarea id="tpl_left_early" class="input-field tpl-body" rows="5" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="tpl-panel">
+                        <div class="tpl-side">
+                            <h5 data-i18n="status.Left">Left</h5>
+                            <div class="form-row">
+                                <label for="msg_left" data-i18n="set.statusWordLabel">Short status phrase</label>
+                                <input type="text" id="msg_left" class="input-field">
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="button" class="btn btn-secondary" data-preview-status="Left" data-i18n="set.preview">Preview</button>
+                                <button type="button" class="btn btn-secondary" data-restore-status="Left" data-i18n="set.restoreDefault">Restore Default</button>
+                            </div>
+                        </div>
+                        <div class="tpl-main">
+                            <div class="form-row">
+                                <label for="tpl_left" data-i18n="set.bodyLabel">Full message</label>
+                                <textarea id="tpl_left" class="input-field tpl-body" rows="5" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <button type="button" id="btnRestoreAllTemplates" class="btn btn-secondary"
+                    style="margin: 4px 0 20px;" data-i18n="set.restoreAll">Restore All Defaults</button>
+
+                <div
+                    style="margin-top: 30px; padding: 20px; border: 1px dashed var(--danger); border-radius: 8px; background-color: var(--panel-danger-bg);">
+                    <h4 style="color: var(--danger); margin-bottom: 5px;">🔥 <span data-i18n="set.dangerZone">Danger Zone</span></h4>
+
+                    <div style="margin-bottom: 20px;">
+                        <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.wipeZkHint">If the ZKTeco hardware is running
+                            out of memory (100k limit), use this button to safely wipe the machine. The local records
+                            will be retained.</small>
+                        <button type="button" id="btnClearLogs"
+                            style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
+                            data-i18n="set.wipeZk">Wipe ZKTeco Logs</button>
                     </div>
 
+                    <div style="border-top: 1px dashed var(--danger); padding-top: 15px;">
+                        <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.resetDbHint">Wipe all local data from the system (deletes all students, attendances, and holiday settings). The system will return to a clean, default state.</small>
+                        <button type="button" id="btnResetDatabase"
+                            style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
+                            data-i18n="set.resetDb">Reset Database</button>
+                        <!-- Points at the class-wise tools rather than duplicating them:
+                             clearing one class at a time lives next to the roster it
+                             affects, where the head counts are already on screen. -->
+                        <small style="color: var(--text-muted); display: block; margin-top: 10px;"
+                            data-i18n-html="set.resetClassHint">To clear one class at a time instead of everything, use <b>Class Tools</b> on the Students page.</small>
+                    </div>
+                </div>
+                <div style="margin-top: 30px; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--panel-bg);">
+                    <h4 style="margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">🏖️ <span data-i18n="set.holidaysHeading">Holiday Management</span></h4>
+                    <small style="color: gray; display: block; margin-bottom: 15px;" data-i18n="set.holidaysHint">Add holidays for every class or for one class only. The selected students will not be marked absent on that date, including Sundays.</small>
+
+                    <!-- Single date row -->
+                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;" data-i18n="set.singleDay">Single Day</p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <input type="date" id="holiday_date" class="input-field" style="flex: 1; min-width: 140px;">
+                        <input type="text" id="holiday_desc" class="input-field" placeholder="e.g. Diwali" data-i18n-placeholder="set.holidayDescPh" style="flex: 2; min-width: 160px;">
+                        <!-- Options come from the Class List above (see populateStandardSelects). -->
+                        <select id="holiday_standard" class="input-field" data-standards="all"
+                            data-all-label-key="common.allStandards" data-all-label="All Standards"
+                            style="flex: 1; min-width: 100px; background-color: var(--input-bg);">
+                            <option value="All" data-i18n="common.allStandards">All Standards</option>
+                        </select>
+                        <button type="button" id="btnAddHoliday" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;" data-i18n="set.addHoliday">Add Holiday</button>
+                    </div>
+                    <small style="color: var(--text-muted); display: block; margin: -4px 0 14px;" data-i18n="set.holidayTableHint">The table shows saved holidays. To change an existing “All” record to a single class, delete it and add the date again with the correct standard.</small>
+
                     <!-- Date range row -->
-                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;">Date Range</p>
+                    <p style="font-weight: bold; margin-bottom: 6px; font-size: 0.9em;" data-i18n="set.dateRange">Date Range</p>
                     <div style="margin-bottom: 15px;">
                         <!-- Row 1: From / To dates -->
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
-                            <label style="white-space: nowrap; font-size: 0.85em; color: #555; font-weight: bold;">From</label>
+                            <label for="holiday_from" style="white-space: nowrap; font-size: 0.85em; color: var(--text-muted); font-weight: bold;" data-i18n="set.from">From</label>
                             <input type="date" id="holiday_from" class="input-field" style="flex: 1; min-width: 140px;">
-                            <label style="white-space: nowrap; font-size: 0.85em; color: #555; font-weight: bold;">To</label>
+                            <label for="holiday_to" style="white-space: nowrap; font-size: 0.85em; color: var(--text-muted); font-weight: bold;" data-i18n="set.to">To</label>
                             <input type="date" id="holiday_to" class="input-field" style="flex: 1; min-width: 140px;">
                         </div>
-                        <!-- Row 2: Description + button -->
+                        <!-- Row 2: Description + select standard + button -->
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="holiday_range_desc" class="input-field" placeholder="e.g. Summer Vacation" style="flex: 1; min-width: 200px;">
-                            <button type="button" id="btnAddHolidayRange" style="padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 5px; cursor: pointer;">Add Range</button>
+                            <input type="text" id="holiday_range_desc" class="input-field" placeholder="e.g. Summer Vacation" data-i18n-placeholder="set.rangeDescPh" style="flex: 2; min-width: 200px;">
+                            <select id="holiday_range_standard" class="input-field" data-standards="all"
+                                data-all-label-key="common.allStandards" data-all-label="All Standards"
+                                style="flex: 1; min-width: 120px; background-color: var(--input-bg);">
+                                <option value="All" data-i18n="common.allStandards">All Standards</option>
+                            </select>
+                            <button type="button" id="btnAddHolidayRange" style="padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap;" data-i18n="set.addRange">Add Range</button>
                         </div>
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
-                            <tr style="background: #eee;">
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Date</th>
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Description</th>
-                                <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Action</th>
+                            <tr style="background: var(--table-header-bg);">
+                                <th style="padding: 8px; text-align: left; border: 1px solid var(--border-color);" data-i18n="common.date">Date</th>
+                                <th style="padding: 8px; text-align: left; border: 1px solid var(--border-color);" data-i18n="common.standard">Standard</th>
+                                <th style="padding: 8px; text-align: left; border: 1px solid var(--border-color);" data-i18n="set.description">Description</th>
+                                <th style="padding: 8px; text-align: center; border: 1px solid var(--border-color);" data-i18n="common.actions">Action</th>
                             </tr>
                         </thead>
                         <tbody id="holidaysTableBody">
@@ -146,23 +447,46 @@
                     </table>
                 </div>
 
-                <div style="margin-top: 30px; padding: 20px; border: 1px dashed var(--primary); border-radius: 8px; background-color: #f0f9ff;">
-                    <h4 style="color: var(--primary); margin-bottom: 5px;">💾 Database Management</h4>
-                    <small style="color: gray; display: block; margin-bottom: 10px;">Import or Export the entire application database. Importing a database will overwrite current data.</small>
+                <div style="margin-top: 30px; padding: 20px; border: 1px dashed var(--primary); border-radius: 8px; background-color: var(--panel-info-bg);">
+                    <h4 style="color: var(--primary); margin-bottom: 5px;">💾 <span data-i18n="set.dbHeading">Database Management</span></h4>
+                    <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.dbHint">Import or Export the entire application database. Importing a database will overwrite current data.</small>
                     <div style="display: flex; gap: 10px;">
-                        <button type="button" id="btnExportDb" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;">Export Database</button>
-                        <button type="button" id="btnImportDb" style="padding: 10px 20px; background: #64748b; color: white; border: none; border-radius: 5px; cursor: pointer;">Import Database</button>
+                        <button type="button" id="btnExportDb" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer;" data-i18n="set.exportDb">Export Database</button>
+                        <button type="button" id="btnImportDb" style="padding: 10px 20px; background: #64748b; color: white; border: none; border-radius: 5px; cursor: pointer;" data-i18n="set.importDb">Import Database</button>
                     </div>
                     <input type="file" id="importDbFile" accept=".db,.sqlite" style="display: none;">
                 </div>
-                
-                <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;">Save Settings</button>
+
+                <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;" data-i18n="set.saveSettings">Save Settings</button>
             </form>
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=5"></script>
-    <script src="js/settings.js?v=4"></script>
+    <!-- MESSAGE PREVIEW -->
+    <!-- Renders through /api/settings/preview-message so what is shown is produced
+         by the same code that sends the real email, not a second guess at it. -->
+    <div class="modal-backdrop" id="preview-modal">
+        <div class="modal-panel wide">
+            <h3 id="preview-title" data-i18n="set.previewTitle">Message Preview</h3>
+            <p class="modal-hint" id="preview-status-line"></p>
+
+            <div class="form-row">
+                <label data-i18n="set.previewSubject">Subject</label>
+                <div class="preview-box" id="preview-subject"></div>
+            </div>
+            <div class="form-row">
+                <label data-i18n="set.previewBody">Message</label>
+                <div class="preview-box preview-body" id="preview-body"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="btnClosePreview" data-i18n="set.close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/settings.js?v=6"></script>
 </body>
 
 </html>

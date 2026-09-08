@@ -1,7 +1,13 @@
 import sqlite3
 import os
 
-db_path = os.path.join(os.path.dirname(__file__), 'python_app', 'attendance.db')
+import sys
+
+# Add python_app directory to the path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'python_app'))
+from config import DB_FILE
+
+db_path = DB_FILE
 
 def clear_emails():
     try:

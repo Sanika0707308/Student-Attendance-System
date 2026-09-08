@@ -33,7 +33,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; IMPORTANT: Build the python executable using `python build.py` first so the /dist folder exists before compiling this script.
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; Include the DLL if it is needed by the application
-Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion regserver
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

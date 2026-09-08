@@ -5,7 +5,7 @@ a = Analysis(
     ['python_app\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Users\\M_Dell\\Desktop\\attendance_system\\frontend', 'frontend')],
+    datas=[('D:\\6th sem\\Student-Attendance-System-1.9-stable\\frontend', 'frontend')],
     hiddenimports=['uvicorn', 'fastapi', 'sqlalchemy', 'pydantic', 'pydantic.deprecated.decorator', 'sqlite3', 'email.mime', 'email.mime.multipart', 'email.mime.text', 'structlog', 'cryptography'],
     hookspath=[],
     hooksconfig={},
