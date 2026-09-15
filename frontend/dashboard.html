@@ -20,19 +20,6 @@
 
     <!-- MAIN CONTENT -->
     <div class="main">
-        <!-- First-run password warning. Shown when the account is still on the
-             shipped admin/admin credentials (login.js records this from the API
-             response). Deliberately a dismissible banner rather than a forced
-             redirect: a hard block on a locally-installed school app is hostile,
-             and the data is already behind a real session. -->
-        <div class="notice-banner" id="password-notice">
-            <span>🔐 <span data-i18n-html="dash.passwordNotice">This installation is still using the default password
-                    <b>admin / admin</b>. <a href="settings.html#change-password">Change it in Settings</a>
-                    so attendance data is not open to anyone who opens the app.</span></span>
-            <button type="button" class="notice-close" id="password-notice-close"
-                data-i18n-aria="dash.dismiss" data-i18n-title="dash.dismiss"
-                aria-label="Dismiss this warning" title="Dismiss">&times;</button>
-        </div>
 
         <h1 class="page-title" id="dashboard-title">
             <!-- data-i18n is the fallback: loadInstituteSettings() overwrites this
