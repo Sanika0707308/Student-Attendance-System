@@ -51,8 +51,12 @@ class StudentCreate(BaseModel):
             raise ValueError(f"Invalid email domain '{domain}'. Please check for typos (e.g. gmail.com).")
         return cleaned.lower()
 
-class StudentRead(StudentCreate):
+class StudentRead(BaseModel):
     id: int
+    name: str
+    zk_id: str
+    parent_email: str
+    standard: str = "11th"
     # False for a graduated batch that was archived rather than deleted. Exposed
     # so the roster can badge them instead of silently mixing them in.
     is_active: bool = True
