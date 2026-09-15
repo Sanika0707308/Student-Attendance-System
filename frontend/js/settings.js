@@ -902,7 +902,7 @@ function wireClassTools() {
     if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
     if (preview) preview.addEventListener("click", previewPromotion);
     if (move) move.addEventListener("click", moveClass);
-    if (clear) clear.addEventListener("click", clearClass);
+    if (clear) clear.addEventListener("click", openDeleteClassModal);
 
     if (graduateAction) {
         graduateAction.addEventListener("change", () => {
@@ -915,45 +915,63 @@ function wireClassTools() {
         moveFrom.addEventListener("standards-loaded", updateMoveToOptions);
     }
 
-    const clearConfirm = document.getElementById("clear-confirm");
-    if (clearConfirm) {
-        clearConfirm.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                clearClass();
-            }
-        });
-    }
+    // Modal backdrop click handler
+    window.addEventListener("click", (e) => {
+        const modal = document.getElementById("delete-class-modal");
+        if (modal && e.target === modal) {
+            closeDeleteClassModal();
+        }
+    });
+
+    // Modal escape key handler
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeDeleteClassModal();
+        }
+    });
 }
 
-function updateMoveToOptions() {
+async function updateMoveToOptions() {
     const moveFrom = document.getElementById("move-from");
     const moveTo = document.getElementById("move-to");
     if (!moveFrom || !moveTo) return;
 
     const fromVal = (moveFrom.value || "").trim();
-    const standards = (_standards && _standards.length) ? _standards : [];
+
+    // Dynamically retrieve standards from memory, cached settings, or window.getStandards()
+    let standards = (_standards && _standards.length) ? [..._standards] : [];
+    if (!standards.length && typeof window.getStandards === "function") {
+        try {
+            standards = await window.getStandards();
+        } catch (e) {
+            standards = [];
+        }
+    }
+    if (!standards.length) {
+        standards = Array.from(moveFrom.options).map(o => o.value).filter(Boolean);
+    }
 
     if (!fromVal) {
-        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.selectFromFirst", "Select source class first"))}</option>`;
+        moveTo.innerHTML = `<option value="" disabled selected>Select source class first</option>`;
+        moveTo.disabled = true;
         return;
     }
 
-    const sourceIdx = standards.indexOf(fromVal);
-    if (sourceIdx === -1) {
-        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.selectClass", "Select class"))}</option>`;
+    // Destination classes: all available classes except the chosen From class
+    const destinationClasses = standards.filter(s => s !== fromVal);
+
+    if (destinationClasses.length === 0) {
+        moveTo.innerHTML = `<option value="" disabled selected>No other classes available</option>`;
+        moveTo.disabled = true;
         return;
     }
 
-    if (sourceIdx >= standards.length - 1) {
-        // Highest class in configured list: no next higher class exists
-        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.noHigherClass", "No higher class available"))}</option>`;
-        return;
-    }
-
-    const nextClass = standards[sourceIdx + 1];
-    moveTo.innerHTML = `<option value="${escapeAttr(nextClass)}" selected>${escapeHtml(nextClass)}</option>`;
-    moveTo.value = nextClass;
+    moveTo.disabled = false;
+    let html = `<option value="" disabled selected>Select destination class</option>`;
+    destinationClasses.forEach(dest => {
+        html += `<option value="${escapeAttr(dest)}">${escapeHtml(dest)}</option>`;
+    });
+    moveTo.innerHTML = html;
 }
 
 async function loadClassCounts(announce = false) {
@@ -1140,11 +1158,11 @@ async function moveClass() {
     const button = document.getElementById("btn-move-class");
 
     if (!from || !to) {
-        window.showToast(tr("classTools.moveNeedBoth", "Choose both a source and a destination class."), "warning");
+        window.showToast("Choose both a source and a destination class.", "warning");
         return;
     }
     if (from === to) {
-        window.showToast(tr("classTools.moveSame", "Those are the same class — nothing to move."), "warning");
+        window.showToast("Those are the same class — nothing to move.", "warning");
         return;
     }
 
@@ -1153,44 +1171,23 @@ async function moveClass() {
     const targetIdx = standards.indexOf(to);
 
     if (sourceIdx === -1 || targetIdx === -1) {
-        window.showToast(tr("classTools.selectClass", "Please select valid classes."), "error");
-        return;
-    }
-
-    if (sourceIdx >= standards.length - 1) {
-        window.showToast(trf("classTools.cannotMoveHighest", { from },
-            `Cannot move from ${from}: it is the highest class.`), "error");
-        return;
-    }
-
-    if (targetIdx <= sourceIdx) {
-        window.showToast(trf("classTools.cannotMoveBackwards", { from, to },
-            `Cannot move backwards or to the same class (${from} → ${to}). Students can only be promoted to the next higher class.`), "error");
-        return;
-    }
-
-    if (targetIdx !== sourceIdx + 1) {
-        const expected = standards[sourceIdx + 1];
-        window.showToast(trf("classTools.mustMoveToNext", { from, next: expected },
-            `Students in ${from} can only be moved to the next higher class (${expected}).`), "error");
+        window.showToast("Please select valid classes.", "error");
         return;
     }
 
     const count = cachedCountFor(from);
     if (count === 0) {
-        window.showToast(trf("classTools.moveNobody", { from },
-            `There are no active students in ${from}.`), "warning");
+        window.showToast(`There are no active students in ${from}.`, "warning");
         return;
     }
 
     if (!window.confirmTwice(
-        trf("classTools.moveConfirm", { n: count, from, to },
-            `Move ${count} students from ${from} to ${to}?`),
-        tr("classTools.moveConfirmAgain", "Please confirm again to move these students."))) return;
+        `Move ${count} students from ${from} to ${to}?`,
+        "Please confirm again to move these students.")) return;
 
     const original = button.textContent;
     button.disabled = true;
-    button.textContent = tr("common.working", "Working…");
+    button.textContent = "Working…";
 
     try {
         const resp = await window.apiFetch('/api/students/change-standard', {
@@ -1201,55 +1198,111 @@ async function moveClass() {
 
         if (!resp.ok) {
             const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.moveFailed", "Could not move that class."), "error");
+            window.showToast(window.describeApiError(detail) || "Could not move that class.", "error");
             return;
         }
 
         const result = await resp.json();
-        window.showToast(trf("classTools.moved", { n: result.moved, to },
-            `Moved ${result.moved} students to ${to}.`), "success");
-        loadClassCounts();
-        updateMoveToOptions();
+        window.showToast(`Moved ${result.moved} students to ${to}.`, "success");
+        await loadClassCounts();
+        await updateMoveToOptions();
     } catch (e) {
         console.error("Class move failed", e);
-        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+        window.showToast("Error connecting to server", "error");
     } finally {
         button.disabled = false;
         button.textContent = original;
     }
 }
 
-async function clearClass() {
+function openDeleteClassModal() {
     const select = document.getElementById("clear-class");
-    const confirmInput = document.getElementById("clear-confirm");
-    const button = document.getElementById("btn-clear-class");
-    const cls = select.value;
+    const cls = (select ? select.value : "").trim();
 
     if (!cls) {
-        window.showToast(tr("classTools.clearNeedClass", "Choose the class you want to clear."), "warning");
-        return;
-    }
-    if ((confirmInput.value || "").trim() !== cls) {
-        window.showToast(tr("classTools.clearMismatch", "Type the class name exactly as shown to confirm."), "warning");
-        confirmInput.focus();
+        window.showToast("Choose the class you want to delete.", "warning");
         return;
     }
 
     const total = cachedCountFor(cls, "total");
-    if (total === 0) {
-        window.showToast(trf("classTools.clearNobody", { cls }, `There are no students in ${cls}.`), "warning");
+    const active = cachedCountFor(cls, "active");
+    const displayCount = total > 0 ? `${total} students (${active} active)` : `0 students`;
+
+    const modal = document.getElementById("delete-class-modal");
+    const targetName = document.getElementById("delete-class-target-name");
+    const displayName = document.getElementById("delete-class-display-name");
+    const studentCount = document.getElementById("delete-class-student-count");
+    const hiddenInput = document.getElementById("delete_class_standard");
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+
+    if (targetName) targetName.textContent = cls;
+    if (displayName) displayName.textContent = cls;
+    if (studentCount) studentCount.textContent = displayCount;
+    if (hiddenInput) hiddenInput.value = cls;
+    if (checkbox) checkbox.checked = false;
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = "0.5";
+        deleteBtn.style.cursor = "not-allowed";
+        deleteBtn.textContent = "Delete";
+    }
+
+    if (modal) modal.style.display = "block";
+}
+
+function closeDeleteClassModal() {
+    const modal = document.getElementById("delete-class-modal");
+    if (modal) modal.style.display = "none";
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    if (checkbox) checkbox.checked = false;
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = "0.5";
+        deleteBtn.style.cursor = "not-allowed";
+        deleteBtn.textContent = "Delete";
+    }
+}
+
+function onDeleteClassCheckboxChange() {
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    if (deleteBtn) {
+        if (checkbox && checkbox.checked) {
+            deleteBtn.disabled = false;
+            deleteBtn.style.opacity = "1";
+            deleteBtn.style.cursor = "pointer";
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.style.opacity = "0.5";
+            deleteBtn.style.cursor = "not-allowed";
+        }
+    }
+}
+
+async function executeDeleteClass() {
+    const hiddenInput = document.getElementById("delete_class_standard");
+    const cls = (hiddenInput ? hiddenInput.value : "").trim();
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+
+    if (!cls) {
+        window.showToast("No class selected.", "warning");
+        closeDeleteClassModal();
         return;
     }
 
-    if (!window.confirmTwice(
-        trf("classTools.clearConfirm", { n: total, cls },
-            `Permanently delete ${total} students in ${cls}, along with every attendance record they have?\n\nThis cannot be undone.`),
-        tr("classTools.clearConfirmAgain", "Please confirm again to permanently delete this class."))) return;
+    if (!checkbox || !checkbox.checked) {
+        window.showToast("Please confirm by checking the box before deleting.", "warning");
+        return;
+    }
 
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("common.working", "Working…");
+    const originalText = deleteBtn ? deleteBtn.textContent : "Delete";
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting…";
+    }
 
     try {
         const resp = await window.apiFetch('/api/students/bulk-delete', {
@@ -1260,22 +1313,49 @@ async function clearClass() {
 
         if (!resp.ok) {
             const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.clearFailed", "Could not clear that class."), "error");
+            window.showToast(window.describeApiError(detail) || "Could not delete that class.", "error");
             return;
         }
 
         const result = await resp.json();
-        window.showToast(trf("classTools.cleared",
-            { students: result.students_deleted, records: result.attendance_deleted },
-            `Deleted ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`), "success");
-        confirmInput.value = "";
-        loadClassCounts();
+        closeDeleteClassModal();
+
+        const msg = result.students_deleted > 0
+            ? `Deleted class "${cls}" with ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`
+            : `Class "${cls}" has been successfully removed.`;
+        window.showToast(msg, "success");
+
+        // Remove from local _standards array if present
+        if (Array.isArray(_standards)) {
+            _standards = _standards.filter(s => s !== cls);
+            renderStandards();
+        }
+
+        // Refresh standards everywhere
+        if (typeof window.refreshStandards === "function") {
+            await window.refreshStandards();
+        }
+
+        // Reload class counts & update options
+        await loadClassCounts();
+        await updateMoveToOptions();
+
+        // Clear selection in clear-class dropdown
+        const clearSelect = document.getElementById("clear-class");
+        if (clearSelect) clearSelect.value = "";
     } catch (e) {
-        console.error("Class clear failed", e);
-        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+        console.error("Class delete failed", e);
+        window.showToast("Error connecting to server", "error");
     } finally {
-        button.disabled = false;
-        button.textContent = original;
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+        }
     }
 }
+
+window.openDeleteClassModal = openDeleteClassModal;
+window.closeDeleteClassModal = closeDeleteClassModal;
+window.onDeleteClassCheckboxChange = onDeleteClassCheckboxChange;
+window.executeDeleteClass = executeDeleteClass;
+

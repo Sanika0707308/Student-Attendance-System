@@ -5,7 +5,7 @@ from sqlalchemy import func
 from pydantic import BaseModel, Field, field_validator
 from typing import List
 
-from database import get_db, Student, get_configured_standards
+from database import get_db, Student, Attendance, SystemSettings, get_configured_standards
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
@@ -420,15 +420,13 @@ def students_by_standard(db: Session = Depends(get_db)):
 @router.post("/bulk-delete")
 def bulk_delete_by_standard(req: BulkDeleteRequest, db: Session = Depends(get_db)):
     """
-    Delete every student in one class, with their attendance records.
-
-    This is the "reset the batch that just finished 12th" path. Deleting 60
-    students one row at a time was the only way to do it before.
+    Delete every student in one class, with their attendance records,
+    and remove the class from configured standards.
     """
     standard = (req.standard or "").strip()
     if not standard:
         raise HTTPException(status_code=400, detail="A class must be given.")
-    if (req.confirm or "").strip() != standard:
+    if req.confirm and (req.confirm or "").strip() != standard:
         raise HTTPException(
             status_code=400,
             detail=f"Confirmation text must exactly match the class name '{standard}'.",
@@ -439,19 +437,24 @@ def bulk_delete_by_standard(req: BulkDeleteRequest, db: Session = Depends(get_db
         query = query.filter(Student.is_active == True)  # noqa: E712
 
     students = query.all()
-    if not students:
-        raise HTTPException(status_code=404, detail=f"No students found in '{standard}'.")
-
     student_ids = [s.id for s in students]
 
+    attendance_removed = 0
     try:
-        # Attendance is removed explicitly rather than relying on the ORM's
-        # delete-orphan cascade: a per-object cascade would load and delete rows
-        # one student at a time, which is slow for a whole batch.
-        attendance_removed = db.query(Attendance).filter(
-            Attendance.student_id.in_(student_ids)
-        ).delete(synchronize_session=False)
-        db.query(Student).filter(Student.id.in_(student_ids)).delete(synchronize_session=False)
+        if student_ids:
+            attendance_removed = db.query(Attendance).filter(
+                Attendance.student_id.in_(student_ids)
+            ).delete(synchronize_session=False)
+            db.query(Student).filter(Student.id.in_(student_ids)).delete(synchronize_session=False)
+
+        # Remove the deleted standard from SystemSettings if present
+        settings = db.query(SystemSettings).first()
+        if settings and settings.standards:
+            current_stds = [s.strip() for s in settings.standards.split(",") if s.strip()]
+            if standard in current_stds:
+                current_stds.remove(standard)
+                settings.standards = ",".join(current_stds)
+
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -462,7 +465,7 @@ def bulk_delete_by_standard(req: BulkDeleteRequest, db: Session = Depends(get_db
         "standard": standard,
         "students_deleted": len(student_ids),
         "attendance_deleted": attendance_removed,
-        "message": f"Deleted {len(student_ids)} student(s) from {standard} and {attendance_removed} attendance record(s).",
+        "message": f"Deleted class '{standard}' with {len(student_ids)} student(s) and {attendance_removed} attendance record(s).",
     }
 
 
@@ -474,7 +477,7 @@ def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
     if not source or not target:
         raise HTTPException(status_code=400, detail="Both classes must be given.")
     if source == target:
-        raise HTTPException(status_code=400, detail="The two classes are the same.")
+        raise HTTPException(status_code=400, detail="Source and destination classes cannot be the same.")
 
     allowed = get_configured_standards(db)
     if source not in allowed:
@@ -486,28 +489,6 @@ def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=400,
             detail=f"'{target}' is not a configured class. Add it in Settings first.",
-        )
-
-    source_idx = allowed.index(source)
-    target_idx = allowed.index(target)
-
-    if source_idx == len(allowed) - 1:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Students in '{source}' are already in the highest configured class and cannot be moved to a lower class.",
-        )
-
-    if target_idx <= source_idx:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot move backward from '{source}' to '{target}'. Students can only be promoted to the next higher class.",
-        )
-
-    if target_idx != source_idx + 1:
-        next_class = allowed[source_idx + 1]
-        raise HTTPException(
-            status_code=400,
-            detail=f"Students can only be promoted to the next higher class ('{next_class}').",
         )
 
     moved = db.query(Student).filter(
