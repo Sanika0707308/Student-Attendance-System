@@ -399,13 +399,13 @@ async function loadStudents() {
         tbody.innerHTML = "";
 
         if (students.length === 0) {
-            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>${tr("students.none", "No students enrolled.")}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>`;
         } else {
-            const attendanceLabel = tr("students.attendanceBtn", "Attendance");
-            const editLabel = tr("students.editBtn", "Edit");
-            const deleteLabel = tr("students.deleteBtn", "Delete");
-            const restoreLabel = tr("students.restore", "Restore");
-            const archivedLabel = tr("students.archived", "Archived");
+            const attendanceLabel = "Attendance";
+            const editLabel = "Edit";
+            const deleteLabel = "Delete";
+            const restoreLabel = "Restore";
+            const archivedLabel = "Archived";
 
             students.forEach(s => {
                 const archived = s.is_active === false;
@@ -483,7 +483,7 @@ async function openDeleteStudentModal(student) {
         btn.disabled = true;
         btn.style.opacity = "0.5";
         btn.style.cursor = "not-allowed";
-        btn.textContent = tr("students.deleteBtn", "Delete");
+        btn.textContent = "Delete";
     }
 
     const warnEl = document.getElementById("delete-student-records-warning");
@@ -495,8 +495,7 @@ async function openDeleteStudentModal(student) {
             if (countResp.ok) {
                 const records = await countResp.json();
                 if (records.length > 0) {
-                    warnEl.textContent = trf("students.confirmDeleteRecords", { count: records.length },
-                        `⚠️ This student has ${records.length} attendance records that will also be permanently deleted.`);
+                    warnEl.textContent = `⚠️ This student has ${records.length} attendance records that will also be permanently deleted.`;
                     warnEl.style.display = "block";
                 }
             }
@@ -541,27 +540,27 @@ async function executeDeleteStudent() {
     const btn = document.getElementById("btn-confirm-delete");
     if (btn) {
         btn.disabled = true;
-        btn.textContent = tr("students.deleting", "Deleting...");
+        btn.textContent = "Deleting...";
     }
 
     try {
         const resp = await window.apiFetch(`/api/students/${id}`, { method: 'DELETE' });
         if (resp.ok) {
-            window.showToast(tr("students.deleted", "Student deleted successfully."), "success");
+            window.showToast("Student deleted successfully.", "success");
             closeDeleteStudentModal();
             loadStudents();
             if (typeof loadClassCounts === "function") loadClassCounts();
         } else {
             const data = await resp.json().catch(() => ({}));
-            window.showToast(tr("students.deleteFailed", "Failed to delete student.") +
+            window.showToast("Failed to delete student." +
                 (data.detail ? `: ${data.detail}` : ""), "error");
         }
     } catch (e) {
         console.error(e);
-        window.showToast(tr("students.deleteError", "Error deleting student."), "error");
+        window.showToast("Error deleting student.", "error");
     } finally {
         if (btn) {
-            btn.textContent = tr("students.deleteBtn", "Delete");
+            btn.textContent = "Delete";
             if (cb && !cb.checked) {
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
@@ -651,7 +650,7 @@ function filterStudents() {
             if (!noMatchRow) {
                 noMatchRow = document.createElement("tr");
                 noMatchRow.id = "no-matching-students-row";
-                noMatchRow.innerHTML = `<td colspan="6" style="text-align:center; color: var(--text-muted);">${escapeHtml(tr("students.noMatch", "No students match the search criteria."))}</td>`;
+                noMatchRow.innerHTML = `<td colspan="6" style="text-align:center; color: var(--text-muted);">No students match the search criteria.</td>`;
                 tbody.appendChild(noMatchRow);
             } else {
                 noMatchRow.style.display = "";

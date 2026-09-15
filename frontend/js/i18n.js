@@ -1096,6 +1096,12 @@ window.t = function (key, fallback) {
     const table = TRANSLATIONS[lang] || TRANSLATIONS.en;
     if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
     if (Object.prototype.hasOwnProperty.call(TRANSLATIONS.en, key)) return TRANSLATIONS.en[key];
+    if (fallback !== undefined && fallback !== null && fallback !== "") return fallback;
+    if (typeof key === "string" && key.includes(".")) {
+        const parts = key.split(".");
+        const lastPart = parts[parts.length - 1];
+        return lastPart.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim();
+    }
     return fallback !== undefined ? fallback : key;
 };
 
@@ -1130,20 +1136,20 @@ window.tf = function (key, vars, fallback) {
  */
 window.applyTranslations = function (root = document) {
     root.querySelectorAll("[data-i18n]").forEach(el => {
-        el.textContent = window.t(el.dataset.i18n);
+        el.textContent = window.t(el.dataset.i18n, el.textContent);
     });
     root.querySelectorAll("[data-i18n-html]").forEach(el => {
         // Only ever fed strings from the table above, never user input.
-        el.innerHTML = window.t(el.dataset.i18nHtml);
+        el.innerHTML = window.t(el.dataset.i18nHtml, el.innerHTML);
     });
     root.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
-        el.setAttribute("placeholder", window.t(el.dataset.i18nPlaceholder));
+        el.setAttribute("placeholder", window.t(el.dataset.i18nPlaceholder, el.getAttribute("placeholder") || ""));
     });
     root.querySelectorAll("[data-i18n-title]").forEach(el => {
-        el.setAttribute("title", window.t(el.dataset.i18nTitle));
+        el.setAttribute("title", window.t(el.dataset.i18nTitle, el.getAttribute("title") || ""));
     });
     root.querySelectorAll("[data-i18n-aria]").forEach(el => {
-        el.setAttribute("aria-label", window.t(el.dataset.i18nAria));
+        el.setAttribute("aria-label", window.t(el.dataset.i18nAria, el.getAttribute("aria-label") || ""));
     });
 
     document.documentElement.setAttribute("lang", window.getLang());

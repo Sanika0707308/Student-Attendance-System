@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="nav.students">Students</title>
     <link rel="stylesheet" href="css/style.css?v=10">
-    <script src="js/i18n.js?v=1"></script>
+    <script src="js/i18n.js?v=3"></script>
 </head>
 
 <body>
@@ -14,23 +14,23 @@
     <app-sidebar></app-sidebar>
 
     <div class="main">
-        <h1 class="page-title" data-i18n="students.title">Students</h1>
+        <h1 class="page-title">Students</h1>
 
         <div class="table-box" style="margin-bottom: 20px; padding: 20px;">
-            <h3 data-i18n="students.addNew">Add New Student</h3>
+            <h3>Add New Student</h3>
             <form id="addStudentForm" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="student_name" placeholder="Student Name" data-i18n-placeholder="students.namePlaceholder" required
+                <input type="text" id="student_name" placeholder="Student Name" required
                     style="flex: 1; min-width: 200px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
-                <input type="text" id="zk_id" placeholder="ZK Machine ID" data-i18n-placeholder="students.zkPlaceholder" required
+                <input type="text" id="zk_id" placeholder="ZK Machine ID" required
                     style="flex: 1; min-width: 150px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
-                <input type="email" id="parent_email" placeholder="Parent Email" data-i18n-placeholder="students.emailPlaceholder" required
+                <input type="email" id="parent_email" placeholder="Parent Email" required
                     style="flex: 1; min-width: 200px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                 <!-- Options come from the class list in Settings (see populateStandardSelects). -->
-                <select id="standard" data-standards="one" data-placeholder-key="students.selectStd" data-placeholder="Select Std" required
+                <select id="standard" data-standards="one" data-placeholder="Select Std" required
                     style="flex: 1; min-width: 100px; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-main);">
-                    <option value="" disabled selected data-i18n="students.selectStd">Select Std</option>
+                    <option value="" disabled selected>Select Std</option>
                 </select>
-                <button type="submit" class="btn-add" style="padding: 10px 20px;" data-i18n="students.addBtn">Add Student</button>
+                <button type="submit" class="btn-add" style="padding: 10px 20px;">Add Student</button>
             </form>
         </div>
 
@@ -40,22 +40,22 @@
         <div class="table-box" style="margin-bottom: 20px; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
                 <div>
-                    <h3 style="margin: 0 0 4px;" data-i18n="students.importExport">Import / Export Roster</h3>
-                    <p style="margin: 0; font-size: 13px; color: var(--text-muted);" data-i18n-html="students.importHint">
+                    <h3 style="margin: 0 0 4px;">Import / Export Roster</h3>
+                    <p style="margin: 0; font-size: 13px; color: var(--text-muted);">
                         CSV columns: <code>name, zk_id, parent_email, standard</code>.
                         Existing ZK IDs are skipped, never overwritten.
                     </p>
                 </div>
                 <div class="btn-row">
-                    <button type="button" class="btn btn-secondary" id="btn-download-template" data-i18n="students.downloadTemplate">Download Template</button>
-                    <button type="button" class="btn btn-secondary" id="btn-export-students" data-i18n="students.exportAll">Export All (CSV)</button>
+                    <button type="button" class="btn btn-secondary" id="btn-download-template">Download Template</button>
+                    <button type="button" class="btn btn-secondary" id="btn-export-students">Export All (CSV)</button>
                 </div>
             </div>
 
             <input type="file" id="import-file" accept=".csv,text/csv" style="display: none;">
             <div class="file-drop" id="import-drop" style="margin-top: 16px; cursor: pointer;">
-                <strong id="import-drop-label" data-i18n="students.chooseCsv">Click to choose a CSV file</strong>
-                <div style="margin-top: 4px;" data-i18n="students.orDrag">or drag one here</div>
+                <strong id="import-drop-label">Click to choose a CSV file</strong>
+                <div style="margin-top: 4px;">or drag one here</div>
             </div>
 
             <div id="import-result" style="display: none;">
@@ -64,11 +64,11 @@
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 70px;" data-i18n="students.line">Line</th>
+                                <th style="width: 70px;">Line</th>
                                 <th data-i18n="common.name">Name</th>
                                 <th style="width: 90px;" data-i18n="common.zkId">ZK ID</th>
-                                <th style="width: 90px;" data-i18n="students.result">Result</th>
-                                <th data-i18n="students.detail">Detail</th>
+                                <th style="width: 90px;">Result</th>
+                                <th>Detail</th>
                             </tr>
                         </thead>
                         <tbody id="import-log-body"></tbody>
@@ -80,7 +80,7 @@
 
         <div class="table-box">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px; flex-wrap: wrap;">
-                <h3 style="margin: 0;" data-i18n="students.list">Student List</h3>
+                <h3 style="margin: 0;">Student List</h3>
                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                     <div>
                         <label for="filter-standard" style="margin-right: 5px;"><span data-i18n="common.standard">Standard</span>:</label>
@@ -93,14 +93,14 @@
                         <input type="text" id="search-name" placeholder="Search name..." oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                     </div>
                     <div>
-                        <label for="search-id" style="margin-right: 5px;"><span data-i18n="students.searchByZk">Search by ZK ID:</span></label>
-                        <input type="text" id="search-id" placeholder="Enter ZK ID" data-i18n-placeholder="students.enterZk" oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
+                        <label for="search-id" style="margin-right: 5px;">Search ZK ID:</label>
+                        <input type="text" id="search-id" placeholder="Search ZK ID..." oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                     </div>
                     <!-- Graduates archived by the promotion tool are hidden by default;
                          this brings them back into view so they can be restored. -->
                     <label class="inline-check">
                         <input type="checkbox" id="show-archived" onchange="loadStudents()">
-                        <span data-i18n="students.showArchived">Show archived</span>
+                        <span>Show archived</span>
                     </label>
                 </div>
             </div>
@@ -127,7 +127,7 @@
     <div id="attendance-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: var(--overlay-bg);">
         <div style="background-color: var(--card-bg); color: var(--text-main); margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; position: relative; box-shadow: var(--shadow-lg);">
             <span onclick="closeAttendanceModal()" style="color: var(--text-main); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
-            <h2 id="modal-student-name" style="margin-top: 0; margin-bottom: 5px;" data-i18n="students.attendanceTitle">Student Attendance</h2>
+            <h2 id="modal-student-name" style="margin-top: 0; margin-bottom: 5px;">Student Attendance</h2>
             <p id="modal-student-zk-id" style="color: var(--text-muted); margin-bottom: 15px; margin-top: 0; font-size: 14px; font-weight: 500;"></p>
 
             <div style="margin: 15px 0; display: flex; gap: 15px; align-items: center; justify-content: space-between;">
@@ -136,7 +136,7 @@
                     <input type="month" id="modal-month" onchange="loadStudentMonthlyAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                     <input type="hidden" id="modal-student-id">
                 </div>
-                <button onclick="downloadStudentMonthlyReport()" class="btn-add" style="background-color: var(--primary); display: none;" id="btn-download-report" data-i18n="students.downloadPdf">Download PDF Report</button>
+                <button onclick="downloadStudentMonthlyReport()" class="btn-add" style="background-color: var(--primary); display: none;" id="btn-download-report">Download PDF Report</button>
             </div>
 
             <div style="max-height: 400px; overflow-y: auto;">
@@ -150,7 +150,7 @@
                         </tr>
                     </thead>
                     <tbody id="modal-attendance-body">
-                        <tr><td colspan="4" style="text-align:center; padding: 10px;" data-i18n="students.selectMonthHint">Select a month to view attendance.</td></tr>
+                        <tr><td colspan="4" style="text-align:center; padding: 10px;">Select a month to view attendance.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -161,7 +161,7 @@
     <div id="edit-student-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: var(--overlay-bg);">
         <div style="background-color: var(--card-bg); color: var(--text-main); margin: 10% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 500px; position: relative; box-shadow: var(--shadow-lg);">
             <span onclick="closeEditStudentModal()" style="color: var(--text-main); float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
-            <h2 style="margin-top: 0;" data-i18n="students.editTitle">Edit Student</h2>
+            <h2 style="margin-top: 0;">Edit Student</h2>
             <form id="editStudentForm" style="display: flex; flex-direction: column; gap: 15px;">
                 <input type="hidden" id="edit_student_id">
                 <div>
@@ -169,11 +169,11 @@
                     <input type="text" id="edit_student_name" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                 </div>
                 <div>
-                    <label for="edit_zk_id" style="font-weight: 500; display: block; margin-bottom: 5px;"><span data-i18n="students.zkMachineId">ZK Machine ID</span>:</label>
+                    <label for="edit_zk_id" style="font-weight: 500; display: block; margin-bottom: 5px;">ZK Machine ID:</label>
                     <input type="text" id="edit_zk_id" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                 </div>
                 <div>
-                    <label for="edit_parent_email" style="font-weight: 500; display: block; margin-bottom: 5px;"><span data-i18n="students.parentEmail">Parent Email</span>:</label>
+                    <label for="edit_parent_email" style="font-weight: 500; display: block; margin-bottom: 5px;">Parent Email:</label>
                     <input type="email" id="edit_parent_email" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                 </div>
                 <div>
@@ -181,7 +181,7 @@
                     <select id="edit_standard" data-standards="one" required style="width: 100%; padding: 8px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                     </select>
                 </div>
-                <button type="submit" class="btn-add" style="padding: 10px; width: 100%; margin-top: 10px;" data-i18n="students.saveChanges">Save Changes</button>
+                <button type="submit" class="btn-add" style="padding: 10px; width: 100%; margin-top: 10px;">Save Changes</button>
             </form>
         </div>
     </div>
@@ -191,17 +191,17 @@
         <div style="background-color: var(--card-bg); color: var(--text-main); margin: 10% auto; padding: 25px; border-radius: 8px; width: 85%; max-width: 500px; position: relative; box-shadow: var(--shadow-lg);">
             <span onclick="closeDeleteStudentModal()" style="color: var(--text-main); float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px;">&times;</span>
             <h2 style="margin-top: 0; color: var(--danger); display: flex; align-items: center; gap: 8px;">
-                <span>⚠️</span> <span data-i18n="students.deleteConfirmTitle">Delete Student</span>
+                <span>⚠️</span> <span>Delete Student</span>
             </h2>
-            <p style="margin: 8px 0 15px 0; color: var(--text-muted); font-size: 14px;" data-i18n="students.deleteWarning">
-                Are you sure you want to delete this student? This action cannot be easily undone.
+            <p style="margin: 8px 0 15px 0; color: var(--text-muted); font-size: 14px;">
+                Are you sure you want to delete this student? This action cannot be undone.
             </p>
 
             <div style="background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.7;">
-                <div><strong><span data-i18n="common.name">Name</span>:</strong> <span id="delete-student-name" style="font-weight: 500;">-</span></div>
-                <div><strong><span data-i18n="common.standard">Standard</span>:</strong> <span id="delete-student-standard">-</span></div>
-                <div><strong><span data-i18n="common.zkId">ZK ID</span>:</strong> <span id="delete-student-zk-id">-</span></div>
-                <div><strong><span data-i18n="common.email">Email</span>:</strong> <span id="delete-student-email">-</span></div>
+                <div><strong>Name:</strong> <span id="delete-student-name" style="font-weight: 500;">-</span></div>
+                <div><strong>Standard:</strong> <span id="delete-student-standard">-</span></div>
+                <div><strong>ZK ID:</strong> <span id="delete-student-zk-id">-</span></div>
+                <div><strong>Email:</strong> <span id="delete-student-email">-</span></div>
                 <div id="delete-student-records-warning" style="display: none; margin-top: 8px; color: var(--danger); font-size: 13px; font-weight: 600;"></div>
             </div>
 
@@ -210,13 +210,13 @@
             <div style="margin: 15px 0 20px 0; padding: 10px 12px; background: rgba(220, 53, 69, 0.08); border: 1px solid rgba(220, 53, 69, 0.25); border-radius: 6px;">
                 <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; line-height: 1.4; color: var(--text-main); font-weight: 500; margin: 0;">
                     <input type="checkbox" id="delete-confirm-checkbox" onchange="onDeleteCheckboxChange()" style="margin-top: 2px; cursor: pointer; width: 16px; height: 16px; accent-color: var(--danger);">
-                    <span data-i18n="students.deleteAcknowledge">I understand that deleting this student will remove the student record and associated data.</span>
+                    <span>I understand that deleting this student will remove the student record and associated data.</span>
                 </label>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" onclick="closeDeleteStudentModal()" style="padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; font-size: 13px; font-weight: 500;" data-i18n="common.cancel">Cancel</button>
-                <button type="button" id="btn-confirm-delete" onclick="executeDeleteStudent()" disabled style="padding: 8px 18px; border-radius: 4px; border: none; background: var(--danger); color: white; cursor: not-allowed; opacity: 0.5; font-size: 13px; font-weight: 500;" data-i18n="students.deleteBtn">Delete</button>
+                <button type="button" onclick="closeDeleteStudentModal()" style="padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; font-size: 13px; font-weight: 500;">Cancel</button>
+                <button type="button" id="btn-confirm-delete" onclick="executeDeleteStudent()" disabled style="padding: 8px 18px; border-radius: 4px; border: none; background: var(--danger); color: white; cursor: not-allowed; opacity: 0.5; font-size: 13px; font-weight: 500;">Delete</button>
             </div>
         </div>
     </div>
@@ -226,7 +226,7 @@
     <script src="js/jspdf.plugin.autotable.min.js"></script>
 
     <script src="js/sidebar.js?v=6"></script>
-    <script src="js/students.js?v=12"></script>
+    <script src="js/students.js?v=14"></script>
 </body>
 
 </html>
