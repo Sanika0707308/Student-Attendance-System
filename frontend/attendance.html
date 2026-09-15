@@ -13,72 +13,81 @@
 
     <app-sidebar></app-sidebar>
 
-    <div class="main">
-        <h1 class="page-title" data-i18n="att.title">Attendance</h1>
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="page-title" data-i18n="att.title">Attendance</h1>
+            </div>
+            <div class="top-bar-right"></div>
+        </header>
 
-        <div class="table-box">
-            <div class="table-header">
-                <h3 data-i18n="att.today">Today's Attendance</h3>
-                <div class="filters-container" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                    <div>
-                        <label for="search-student-name" style="margin-right: 5px;">Search Name:</label>
-                        <input type="text" id="search-student-name" placeholder="Search name..." oninput="filterAttendance()"
-                            style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
-                    </div>
-                    <div class="status-box">
-                        <label for="attendance-status" style="margin-right: 5px;"><span data-i18n="common.status">Status</span>:</label>
-                        <select id="attendance-status" onchange="filterAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
-                            <option value="All" data-i18n="common.all">All</option>
-                            <option value="Present" data-i18n="status.Present">Present</option>
-                            <option value="Late" data-i18n="status.Late">Late</option>
-                            <option value="Left Early" data-i18n="status.LeftEarly">Left Early</option>
-                            <option value="Left" data-i18n="status.Left">Left</option>
-                            <option value="Absent" data-i18n="status.Absent">Absent</option>
-                        </select>
-                    </div>
-                    <div class="date-box">
-                        <label for="attendance-date" style="margin-right: 5px;"><span data-i18n="common.selectDate">Select Date</span>:</label>
-                        <input type="date" id="attendance-date" onchange="filterAttendance()">
-                    </div>
-                    <div class="standard-box">
-                        <label for="attendance-standard" style="margin-right: 5px;"><span data-i18n="common.standard">Standard</span>:</label>
-                        <!-- Options are filled by populateStandardSelects() in sidebar.js from
-                             the class list configured in Settings. -->
-                        <select id="attendance-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All"
-                            onchange="filterAttendance()"
-                            style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
-                            <option value="All" data-i18n="common.all">All</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 10px; border-left: 1px solid var(--border-color); padding-left: 15px;">
-                        <button id="btn-export-daily-xlsx" class="btn" style="background-color: #1d6f42; color: #fff; padding: 7px 16px;" data-i18n="att.excel">Excel</button>
-                        <button id="btn-export-daily-csv" class="btn" style="background-color: #17a2b8; color: #fff; padding: 7px 16px;" data-i18n="att.csv">CSV</button>
-                        <button id="btn-export-daily-pdf" class="btn" style="background-color: #dc3545; color: #fff; padding: 7px 16px;" data-i18n="att.pdf">PDF</button>
+        <!-- SCROLLABLE MAIN CONTENT -->
+        <main class="main-content">
+            <div class="table-box">
+                <div class="table-header">
+                    <h3 data-i18n="att.today">Today's Attendance</h3>
+                    <div class="filters-container" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label for="search-student-name" style="margin-right: 5px;">Search Name:</label>
+                            <input type="text" id="search-student-name" placeholder="Search name..." oninput="filterAttendance()"
+                                style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
+                        </div>
+                        <div class="status-box">
+                            <label for="attendance-status" style="margin-right: 5px;"><span data-i18n="common.status">Status</span>:</label>
+                            <select id="attendance-status" onchange="filterAttendance()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                <option value="All" data-i18n="common.all">All</option>
+                                <option value="Present" data-i18n="status.Present">Present</option>
+                                <option value="Late" data-i18n="status.Late">Late</option>
+                                <option value="Left Early" data-i18n="status.LeftEarly">Left Early</option>
+                                <option value="Left" data-i18n="status.Left">Left</option>
+                                <option value="Absent" data-i18n="status.Absent">Absent</option>
+                            </select>
+                        </div>
+                        <div class="date-box">
+                            <label for="attendance-date" style="margin-right: 5px;"><span data-i18n="common.selectDate">Select Date</span>:</label>
+                            <input type="date" id="attendance-date" onchange="filterAttendance()">
+                        </div>
+                        <div class="standard-box">
+                            <label for="attendance-standard" style="margin-right: 5px;"><span data-i18n="common.standard">Standard</span>:</label>
+                            <!-- Options are filled by populateStandardSelects() in sidebar.js from
+                                 the class list configured in Settings. -->
+                            <select id="attendance-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All"
+                                onchange="filterAttendance()"
+                                style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                <option value="All" data-i18n="common.all">All</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 10px; border-left: 1px solid var(--border-color); padding-left: 15px;">
+                            <button id="btn-export-daily-xlsx" class="btn" style="background-color: #1d6f42; color: #fff; padding: 7px 16px;" data-i18n="att.excel">Excel</button>
+                            <button id="btn-export-daily-csv" class="btn" style="background-color: #17a2b8; color: #fff; padding: 7px 16px;" data-i18n="att.csv">CSV</button>
+                            <button id="btn-export-daily-pdf" class="btn" style="background-color: #dc3545; color: #fff; padding: 7px 16px;" data-i18n="att.pdf">PDF</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th data-i18n="common.studentName">Student Name</th>
-                        <th data-i18n="common.zkId">ZK ID</th>
-                        <th data-i18n="common.standard">Standard</th>
-                        <th data-i18n="common.inTime">IN Time</th>
-                        <th data-i18n="common.outTime">OUT Time</th>
-                        <th data-i18n="common.status">Status</th>
-                    </tr>
-                </thead>
-                <tbody id="attendance-table-body">
-                    <tr><td colspan="6" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
-                </tbody>
-            </table>
-        </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-i18n="common.studentName">Student Name</th>
+                            <th data-i18n="common.zkId">ZK ID</th>
+                            <th data-i18n="common.standard">Standard</th>
+                            <th data-i18n="common.inTime">IN Time</th>
+                            <th data-i18n="common.outTime">OUT Time</th>
+                            <th data-i18n="common.status">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table-body">
+                        <tr><td colspan="6" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/jspdf.plugin.autotable.min.js"></script>
-    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/sidebar.js?v=7"></script>
     <script src="js/attendance.js?v=8"></script>
 </body>
 

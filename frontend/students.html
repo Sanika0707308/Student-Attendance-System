@@ -13,10 +13,18 @@
 
     <app-sidebar></app-sidebar>
 
-    <div class="main">
-        <h1 class="page-title">Students</h1>
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="page-title" data-i18n="nav.students">Students</h1>
+            </div>
+            <div class="top-bar-right"></div>
+        </header>
 
-        <div class="table-box" style="margin-bottom: 20px; padding: 20px;">
+        <!-- SCROLLABLE MAIN CONTENT -->
+        <main class="main-content">
+            <div class="table-box" style="margin-bottom: 20px; padding: 20px;">
             <h3>Add New Student</h3>
             <form id="addStudentForm" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <input type="text" id="student_name" placeholder="Student Name" required
@@ -121,6 +129,7 @@
                 </tbody>
             </table>
         </div>
+        </main>
     </div>
 
     <!-- Attendance Modal -->
@@ -225,7 +234,7 @@
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/jspdf.plugin.autotable.min.js"></script>
 
-    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/sidebar.js?v=7"></script>
     <script src="js/students.js?v=14"></script>
 </body>
 

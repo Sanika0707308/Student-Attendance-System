@@ -121,13 +121,19 @@
 }
 
 /* ---------- GLOBAL ---------- */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 body {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    width: 100vw;
     background: var(--bg-color);
     color: var(--text-main);
-    overflow-x: hidden; /* Prevent horizontal scrollbar when toast is translated out of bounds */
-    overflow-y: scroll; /* Prevent layout shift jumping when vertical scrollbar appears from new rows */
+    overflow: hidden; /* Prevent window/body scrollbars entirely */
 }
 
 app-sidebar {
@@ -789,17 +795,35 @@ app-sidebar {
     font-weight: 800;
 }
 
-/* ---------- SIDEBAR ---------- */
+/* ---------- FIXED SIDEBAR ---------- */
 .sidebar {
     width: 280px;
-    min-height: 100vh;
+    min-width: 280px;
+    max-width: 280px;
+    height: 100vh;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     padding: 30px 20px;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-sm);
-    z-index: 10;
+    z-index: 100;
+    overflow-y: auto; /* Handles its own overflow if viewport is small */
+    overflow-x: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
 }
 
 .institute-name {
@@ -879,14 +903,125 @@ app-sidebar {
     }
 }
 
-/* ---------- MAIN CONTENT ---------- */
-.main {
+/* ---------- MAIN LAYOUT WRAPPER ---------- */
+.main-wrapper {
     flex: 1;
-    padding: 40px 50px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--bg-color);
+}
+
+/* ---------- FIXED TOP BAR / HEADER ---------- */
+.top-bar {
+    height: 70px;
+    min-height: 70px;
+    max-height: 70px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 90;
+    box-shadow: var(--shadow-sm);
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+    flex: 1;
+}
+
+.top-bar-left .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.top-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--bg-color);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    transition: var(--transition-std);
+    text-decoration: none;
+    line-height: 1.2;
+    outline: none;
+}
+
+.top-bar-btn:hover {
+    background: var(--sidebar-hover);
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.top-bar-btn.logout-btn:hover {
+    background: var(--panel-danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ---------- SCROLLABLE MAIN CONTENT AREA ---------- */
+.main,
+.main-content {
+    flex: 1;
+    overflow-y: auto; /* ONLY THIS AREA SCROLLS! */
+    overflow-x: hidden;
+    padding: 35px 40px 60px;
     max-width: 1400px;
-    /* Constrain max width for large monitors */
     margin: 0 auto;
     width: 100%;
+}
+
+.main::-webkit-scrollbar,
+.main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.main::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.main::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.main::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 .page-title {
@@ -1224,6 +1359,32 @@ tbody tr:last-child td {
     .login-box {
         padding: 44px 26px;
         border-radius: 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 220px;
+        min-width: 220px;
+        max-width: 220px;
+        padding: 20px 12px;
+    }
+    .top-bar {
+        padding: 0 20px;
+        height: 64px;
+        min-height: 64px;
+    }
+    .top-bar-left .page-title {
+        font-size: 18px;
+    }
+    .top-bar-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        gap: 5px;
+    }
+    .main,
+    .main-content {
+        padding: 20px;
     }
 }
 

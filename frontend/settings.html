@@ -14,11 +14,18 @@
     <!-- SIDEBAR -->
     <app-sidebar></app-sidebar>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
-        <h1 class="page-title" data-i18n="set.title">System Settings</h1>
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="page-title" data-i18n="set.title">System Settings</h1>
+            </div>
+            <div class="top-bar-right"></div>
+        </header>
 
-        <!-- ACCOUNT SECURITY -->
+        <!-- SCROLLABLE MAIN CONTENT -->
+        <main class="main-content">
+            <!-- ACCOUNT SECURITY -->
         <!-- Its own <form>, deliberately outside #settingsForm: nested forms are
              invalid HTML, and a password change must not be bundled into the
              "Save Settings" round trip. The dashboard's first-run banner links
@@ -532,6 +539,7 @@
                 <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;" data-i18n="set.saveSettings">Save Settings</button>
             </form>
         </div>
+        </main>
     </div>
 
     <!-- MESSAGE PREVIEW -->
@@ -592,7 +600,7 @@
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/sidebar.js?v=7"></script>
     <script src="js/settings.js?v=7"></script>
 </body>
 

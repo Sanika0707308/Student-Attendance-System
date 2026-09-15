@@ -18,84 +18,90 @@
     <!-- SIDEBAR -->
     <app-sidebar></app-sidebar>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
-
-        <h1 class="page-title" id="dashboard-title">
-            <!-- data-i18n is the fallback: loadInstituteSettings() overwrites this
-                 with "<institute> Dashboard" once /api/settings answers, so a
-                 failed request still leaves a translated heading. -->
-            <span id="dashboard-title-text" data-i18n="dash.title">Biometric Attendance Dashboard</span>
-            <span id="device-status-badge" style="font-size: 12px; margin-left: 15px; background: var(--table-header-bg); padding: 5px 12px; border-radius: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
-                <span id="status-dot" class="status-dot offline"></span>
-                <span id="status-text" data-i18n="device.offlineLabel">Device Offline</span>
-            </span>
-        </h1>
-
-
-        <!-- INFO CARDS -->
-        <div class="cards">
-            <div class="card">
-                <p data-i18n="dash.totalStudents">Total Students</p>
-                <h2 id="total">—</h2>
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="page-title" id="dashboard-title">
+                    <!-- data-i18n is the fallback: loadInstituteSettings() overwrites this
+                         with "<institute> Dashboard" once /api/settings answers, so a
+                         failed request still leaves a translated heading. -->
+                    <span id="dashboard-title-text" data-i18n="dash.title">Biometric Attendance Dashboard</span>
+                    <span id="device-status-badge" style="font-size: 12px; margin-left: 15px; background: var(--table-header-bg); padding: 5px 12px; border-radius: 20px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+                        <span id="status-dot" class="status-dot offline"></span>
+                        <span id="status-text" data-i18n="device.offlineLabel">Device Offline</span>
+                    </span>
+                </h1>
             </div>
+            <div class="top-bar-right"></div>
+        </header>
 
-            <div class="card present">
-                <p data-i18n="dash.present">Present</p>
-                <h2 id="present">—</h2>
-            </div>
+        <!-- SCROLLABLE MAIN CONTENT -->
+        <main class="main-content">
+            <!-- INFO CARDS -->
+            <div class="cards">
+                <div class="card">
+                    <p data-i18n="dash.totalStudents">Total Students</p>
+                    <h2 id="total">—</h2>
+                </div>
 
-            <div class="card absent">
-                <p data-i18n="dash.absent">Absent</p>
-                <h2 id="absent">—</h2>
-            </div>
+                <div class="card present">
+                    <p data-i18n="dash.present">Present</p>
+                    <h2 id="present">—</h2>
+                </div>
 
-            <div class="card" style="border-left: 5px solid var(--warning);">
-                <p data-i18n="dash.emailsFailed">Emails Failed</p>
-                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap: 10px;">
-                    <div>
-                        <h2 id="emails-failed">—</h2>
-                        <span id="view-failed-emails" onclick="viewFailedEmails()" data-i18n="dash.viewList" style="font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: underline; display: none;">View List</span>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
-                        <button onclick="retryEmails()" id="btn-retry-emails" data-i18n="dash.retrySending" style="background-color:var(--warning); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:12px; display:none;">
-                            Retry Sending
-                        </button>
-                        <!-- Only shown when "Allow Retry All Failed in bulk" is enabled in
-                             Settings; the endpoint returns 403 otherwise. -->
-                        <button onclick="retryAllEmails()" id="btn-retry-all-emails" data-i18n="dash.retryAll" style="background-color:transparent; color:var(--text-muted); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:600; font-size:11px; display:none;">
-                            Retry All (any age)
-                        </button>
+                <div class="card absent">
+                    <p data-i18n="dash.absent">Absent</p>
+                    <h2 id="absent">—</h2>
+                </div>
+
+                <div class="card" style="border-left: 5px solid var(--warning);">
+                    <p data-i18n="dash.emailsFailed">Emails Failed</p>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap: 10px;">
+                        <div>
+                            <h2 id="emails-failed">—</h2>
+                            <span id="view-failed-emails" onclick="viewFailedEmails()" data-i18n="dash.viewList" style="font-size: 12px; color: var(--primary); cursor: pointer; text-decoration: underline; display: none;">View List</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                            <button onclick="retryEmails()" id="btn-retry-emails" data-i18n="dash.retrySending" style="background-color:var(--warning); color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:12px; display:none;">
+                                Retry Sending
+                            </button>
+                            <!-- Only shown when "Allow Retry All Failed in bulk" is enabled in
+                                 Settings; the endpoint returns 403 otherwise. -->
+                            <button onclick="retryAllEmails()" id="btn-retry-all-emails" data-i18n="dash.retryAll" style="background-color:transparent; color:var(--text-muted); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:600; font-size:11px; display:none;">
+                                Retry All (any age)
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ATTENDANCE TABLE -->
-        <div class="table-box">
-            <div class="table-header">
-                <h3 data-i18n="dash.records">Attendance Records</h3>
-                <div class="date-box">
-                    <label for="attendance-date"><span data-i18n="common.selectDate">Select Date</span>:</label>
-                    <input type="date" id="attendance-date" onchange="showDateRecords()">
+            <!-- ATTENDANCE TABLE -->
+            <div class="table-box">
+                <div class="table-header">
+                    <h3 data-i18n="dash.records">Attendance Records</h3>
+                    <div class="date-box">
+                        <label for="attendance-date"><span data-i18n="common.selectDate">Select Date</span>:</label>
+                        <input type="date" id="attendance-date" onchange="showDateRecords()">
+                    </div>
                 </div>
-            </div>
 
-            <table id="attendance-table">
-                <thead>
-                    <tr>
-                        <th data-i18n="common.date">Date</th>
-                        <th data-i18n="common.name">Name</th>
-                        <th data-i18n="common.inTime">IN Time</th>
-                        <th data-i18n="common.outTime">OUT Time</th>
-                        <th data-i18n="common.status">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
-                </tbody>
-            </table>
-        </div>
+                <table id="attendance-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="common.date">Date</th>
+                            <th data-i18n="common.name">Name</th>
+                            <th data-i18n="common.inTime">IN Time</th>
+                            <th data-i18n="common.outTime">OUT Time</th>
+                            <th data-i18n="common.status">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="5" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 
     <!-- FAILED EMAILS MODAL -->
@@ -126,7 +132,7 @@
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=6"></script>
+    <script src="js/sidebar.js?v=7"></script>
     <script src="js/dashboard.js?v=8"></script>
 </body>
 
