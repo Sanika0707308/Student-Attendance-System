@@ -128,25 +128,25 @@ async def require_authentication(request: Request, call_next):
 # once at startup. Serve from AppData — a normal Windows path that realpath()
 # resolves without the \\?\ prefix, so StaticFiles works correctly.
 
-FRONTEND_DIR = os.path.join(get_base_path(), "frontend")    # source (may be _MEIPASS)
-STATIC_DIR   = os.path.join(DATA_DIR, "frontend_static")    # destination (AppData)
+FRONTEND_DIR = os.path.join(get_base_path(), "frontend")
 
-print(f"[STARTUP] Source frontend : {FRONTEND_DIR}  exists={os.path.isdir(FRONTEND_DIR)}", flush=True)
-print(f"[STARTUP] Target static   : {STATIC_DIR}", flush=True)
-
-if os.path.isdir(FRONTEND_DIR):
-    try:
-        # Always re-copy so upgrades are applied immediately.
-        if os.path.isdir(STATIC_DIR):
-            shutil.rmtree(STATIC_DIR)
-        shutil.copytree(FRONTEND_DIR, STATIC_DIR)
-        print(f"[STARTUP] Frontend copied to AppData OK. Files: {os.listdir(STATIC_DIR)}", flush=True)
-    except Exception as e:
-        print(f"[STARTUP] Copy failed ({e}), falling back to _MEIPASS directly.", flush=True)
-        STATIC_DIR = FRONTEND_DIR
+if hasattr(sys, "_MEIPASS"):
+    STATIC_DIR = os.path.join(DATA_DIR, "frontend_static")
+    if os.path.isdir(FRONTEND_DIR):
+        try:
+            if os.path.isdir(STATIC_DIR):
+                shutil.rmtree(STATIC_DIR)
+            shutil.copytree(FRONTEND_DIR, STATIC_DIR)
+            print(f"[STARTUP] Frontend copied to AppData OK. Files: {os.listdir(STATIC_DIR)}", flush=True)
+        except Exception as e:
+            print(f"[STARTUP] Copy failed ({e}), falling back to _MEIPASS directly.", flush=True)
+            STATIC_DIR = FRONTEND_DIR
+    else:
+        print(f"[ERROR] Frontend NOT bundled into EXE! Rebuild with build.py from project root.", flush=True)
+        os.makedirs(STATIC_DIR, exist_ok=True)
 else:
-    print(f"[ERROR] Frontend NOT bundled into EXE! Rebuild with build.py from project root.", flush=True)
-    os.makedirs(STATIC_DIR, exist_ok=True)
+    STATIC_DIR = FRONTEND_DIR
+    print(f"[STARTUP] Running in development mode; serving directly from: {STATIC_DIR}", flush=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

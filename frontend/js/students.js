@@ -407,6 +407,8 @@ async function loadStudents() {
                 if (archived) tr_.className = "is-archived";
                 tr_.dataset.name = s.name || "";
                 tr_.dataset.zkid = String(s.zk_id != null ? s.zk_id : "");
+                tr_.setAttribute('data-name', s.name || '');
+                tr_.setAttribute('data-zkid', String(s.zk_id != null ? s.zk_id : ''));
 
                 // The archived badge goes in the name cell, not the standard
                 // cell — filterStudents() compares that one against the class
@@ -521,10 +523,18 @@ function filterStudents() {
     const idInput = document.getElementById("search-id");
     const nameTerm = (nameInput ? nameInput.value : "").trim().toLowerCase();
     const zkTerm = (idInput ? idInput.value : "").trim().toLowerCase();
-    const standardFilter = (document.getElementById("filter-standard")?.value || "All").trim();
+    const rawStandardFilter = (document.getElementById("filter-standard")?.value || "All").trim();
+    
+    // Check if standard filter means "no filter / all standards"
+    const lowerStd = rawStandardFilter.toLowerCase();
+    const isAllStandards = !rawStandardFilter || lowerStd === "all" || lowerStd === "all standards" || rawStandardFilter === "सर्व";
+
     const tbody = document.getElementById("student-table-body");
     if (!tbody) return;
     const rows = tbody.getElementsByTagName("tr");
+
+    // Split search name into words so "Sanika Patil" matches "Sanika Patil", "Sanika  Patil", "Patil Sanika", etc.
+    const nameWords = nameTerm.split(/\s+/).filter(Boolean);
 
     let visibleCount = 0;
     let studentRowsExist = false;
@@ -537,13 +547,20 @@ function filterStudents() {
         if (tds.length < 5) continue;
 
         studentRowsExist = true;
-        const nameText = (row.dataset.name !== undefined ? row.dataset.name : (tds[1].textContent || tds[1].innerText || "")).trim();
-        const zkIdText = (row.dataset.zkid !== undefined ? row.dataset.zkid : (tds[3].textContent || tds[3].innerText || "")).trim();
-        const standardText = (tds[2].textContent || tds[2].innerText || "").trim();
+        const rawName = row.dataset.name !== undefined ? row.dataset.name : (row.getAttribute("data-name") || tds[1].textContent || tds[1].innerText || "");
+        const rawZk = row.dataset.zkid !== undefined ? row.dataset.zkid : (row.getAttribute("data-zkid") || tds[3].textContent || tds[3].innerText || "");
+        const rawStd = tds[2].textContent || tds[2].innerText || "";
 
-        const matchName = !nameTerm || nameText.toLowerCase().includes(nameTerm);
-        const matchZk = !zkTerm || zkIdText.toLowerCase().includes(zkTerm);
-        const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+        const nameText = rawName.trim().toLowerCase();
+        const zkIdText = rawZk.trim().toLowerCase();
+        const standardText = rawStd.trim().toLowerCase();
+
+        // Match name: every typed word must be present in the student's name
+        const matchName = nameWords.length === 0 || nameWords.every(word => nameText.includes(word));
+        // Match ZK ID
+        const matchZk = !zkTerm || zkIdText.includes(zkTerm);
+        // Match standard
+        const matchStandard = isAllStandards || (standardText === lowerStd);
 
         if (matchName && matchZk && matchStandard) {
             row.style.display = "";
