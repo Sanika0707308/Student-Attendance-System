@@ -36,8 +36,13 @@
 
         <div style="margin-bottom: 25px; display: flex; align-items: center; gap: 15px; background: var(--card-bg); padding: 15px 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="report-month" style="font-weight: 600; color: var(--text-main);"><span data-i18n="common.selectMonth">Select Month</span>:</label>
-                <input type="month" id="report-month" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std);">
+                <label for="report-from-date" style="font-weight: 600; color: var(--text-main);">From Date:</label>
+                <input type="date" id="report-from-date" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std); background: var(--input-bg); color: var(--text-main);">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="report-to-date" style="font-weight: 600; color: var(--text-main);">To Date:</label>
+                <input type="date" id="report-to-date" onchange="loadReports()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; transition: var(--transition-std); background: var(--input-bg); color: var(--text-main);">
             </div>
 
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -97,7 +102,7 @@
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/jspdf.plugin.autotable.min.js"></script>
     <script src="js/sidebar.js?v=6"></script>
-    <script src="js/reports.js?v=10"></script>
+    <script src="js/reports.js?v=11"></script>
 </body>
 
 </html>

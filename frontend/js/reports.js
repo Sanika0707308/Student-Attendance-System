@@ -24,11 +24,40 @@ function isHolidayFor(holidayIndex, dateStr, standard) {
     return standards.has('All') || standards.has(standard || '11th');
 }
 
+function getDateRange() {
+    const fromEl = document.getElementById("report-from-date");
+    const toEl = document.getElementById("report-to-date");
+    const fromDate = fromEl ? fromEl.value.trim() : "";
+    const toDate = toEl ? toEl.value.trim() : "";
+
+    if (!fromDate) {
+        window.showToast("From Date is required.", "warning");
+        return null;
+    }
+    if (!toDate) {
+        window.showToast("To Date is required.", "warning");
+        return null;
+    }
+    if (toDate < fromDate) {
+        window.showToast("To Date cannot be earlier than From Date.", "warning");
+        return null;
+    }
+    return { fromDate, toDate };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-    // Set default month to current month
+    // Set default From Date to 1st of current month, and To Date to today
     const now = new Date();
-    const monthStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
-    document.getElementById("report-month").value = monthStr;
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentDate = String(now.getDate()).padStart(2, '0');
+    const fromStr = `${currentYear}-${currentMonth}-01`;
+    const toStr = `${currentYear}-${currentMonth}-${currentDate}`;
+    
+    const fromEl = document.getElementById("report-from-date");
+    const toEl = document.getElementById("report-to-date");
+    if (fromEl) fromEl.value = fromStr;
+    if (toEl) toEl.value = toStr;
     
     loadReports();
 
@@ -53,7 +82,17 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadReports() {
-    const month = document.getElementById("report-month").value || "";
+    const range = getDateRange();
+    if (!range) {
+        document.getElementById("total-days").innerText = 0;
+        document.getElementById("avg-attendance").innerText = "0%";
+        document.getElementById("low-attendance").innerText = "0%";
+        document.getElementById("student-summary-body").innerHTML =
+            "<tr><td colspan='5' style='text-align:center; color: var(--danger);'>Please select a valid date range (From Date &amp; To Date).</td></tr>";
+        return;
+    }
+    const { fromDate, toDate } = range;
+    const dateRangeLabel = `${fromDate} to ${toDate}`;
     
     // Fetch settings to get institute name
     try {
@@ -61,22 +100,17 @@ async function loadReports() {
         if (settingsResp.ok) {
             const settings = await settingsResp.json();
             instituteName = settings.institute_name || "Biometric Attendance";
-            document.title = trf("rep.titleFor", { institute: instituteName },
-                `${instituteName} Reports`);
+            document.title = `${instituteName} Reports`;
         }
     } catch (e) {
         console.error("Failed to load institute name", e);
     }
 
     document.getElementById("table-report-title").innerText =
-        trf("rep.tableTitleFor", { institute: instituteName, month: month },
-            `${instituteName} - Attendance Report (${month})`);
+        `${instituteName} - Attendance Report (${dateRangeLabel})`;
 
     try {
-        let url = '/api/attendance?limit=100000';
-        if (month) {
-            url += `&month=${month}`;
-        }
+        let url = `/api/attendance?limit=100000&from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}`;
 
         const [studentsResp, logsResp, holidaysResp] = await Promise.all([
             window.apiFetch('/api/students'),
@@ -99,15 +133,11 @@ async function loadReports() {
         const standardFilter = document.getElementById("report-standard").value;
         const filteredStudents = standardFilter === "All" ? students : students.filter(s => (s.standard || '11th') === standardFilter);
         
-        // --- STRICT FRONTEND FILTERING TO BYPASS BACKEND IGNORING ---
-        if (month) {
-           const targetYear = parseInt(month.split('-')[0], 10);
-           const targetMonth = parseInt(month.split('-')[1], 10);
-           logs = logs.filter(log => {
-               const d = new Date(log.punch_time);
-               return d.getFullYear() === targetYear && (d.getMonth() + 1) === targetMonth;
-           });
-        }
+        // --- STRICT FRONTEND FILTERING BY DATE RANGE ---
+        logs = logs.filter(log => {
+            const punchDate = log.punch_time.split("T")[0];
+            return punchDate >= fromDate && punchDate <= toDate;
+        });
         
         // Drop punches recorded on a day that was a holiday for that student's standard,
         // so a class-specific holiday never counts against the other class.
@@ -298,29 +328,24 @@ function getSummaryDataFromTable() {
  * screen can never disagree.
  */
 async function downloadXLSX() {
-    const month = document.getElementById("report-month").value;
+    const range = getDateRange();
+    if (!range) return;
+    const { fromDate, toDate } = range;
     const standard = document.getElementById("report-standard").value || "All";
 
-    if (!month) {
-        window.showToast(tr("rep.needMonth", "Pick a month first."), "warning");
-        return;
-    }
-
     const button = document.getElementById("btn-export-xlsx");
-    // Captures the markup as rendered, so restoring it puts back the icon and
-    // whichever language is on screen.
     const original = button.innerHTML;
     button.disabled = true;
-    button.textContent = tr("rep.buildingWorkbook", "Building workbook…");
+    button.textContent = "Building workbook…";
 
     try {
         const resp = await window.apiFetch(
-            `/api/reports/monthly-xlsx?month=${encodeURIComponent(month)}&standard=${encodeURIComponent(standard)}`);
+            `/api/reports/monthly-xlsx?from_date=${encodeURIComponent(fromDate)}&to_date=${encodeURIComponent(toDate)}&standard=${encodeURIComponent(standard)}`);
 
         if (!resp.ok) {
             const detail = await resp.json().then(d => d.detail).catch(() => null);
             window.showToast(window.describeApiError(detail)
-                || tr("rep.workbookFailed", "Could not build the workbook."), "warning");
+                || "Could not build the workbook.", "warning");
             return;
         }
 
@@ -329,8 +354,8 @@ async function downloadXLSX() {
             "Excel Workbook", "*.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     } catch (e) {
-        console.error("Monthly xlsx export failed", e);
-        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+        console.error("Date range xlsx export failed", e);
+        window.showToast("Error connecting to server", "error");
     } finally {
         button.disabled = false;
         button.innerHTML = original;
@@ -338,10 +363,13 @@ async function downloadXLSX() {
 }
 
 function downloadCSV() {
+    const range = getDateRange();
+    if (!range) return;
+    const { fromDate, toDate } = range;
+
     const data = getSummaryDataFromTable();
     if (data.length === 0) {
-        window.showToast(tr("rep.noSummary",
-            "No summary data to download for this month."), "warning");
+        window.showToast("No summary data to download for this date range.", "warning");
         return;
     }
 
@@ -359,21 +387,18 @@ function downloadCSV() {
         csvContent += `${zkId},${name},${standard},${days},${workingDays},${perc}\n`;
     });
 
-    const month = document.getElementById("report-month").value || "All";
     const standard = document.getElementById("report-standard").value;
     const safeStandard = standard === "All" ? "All" : standard;
-    const filename = `Student_Attendance_Summary_${safeStandard}_${month}.csv`;
+    const filename = `Student_Attendance_Summary_${safeStandard}_${fromDate}_to_${toDate}.csv`;
 
     if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file) {
         const contentBase64 = window.btoa(unescape(encodeURIComponent(csvContent)));
         window.pywebview.api.save_file(contentBase64, filename, "Comma Separated Values", "*.csv")
             .then(res => {
                 if (res.status === "success") {
-                    window.showToast(tr("common.fileSaved", "File saved successfully to:")
-                        + "\n" + res.path, "success");
+                    window.showToast("File saved successfully to:\n" + res.path, "success");
                 } else if (res.status === "error") {
-                    window.showToast(trf("common.fileSaveFailed", { error: res.error },
-                        `Failed to save file: ${res.error}`), "error");
+                    window.showToast(`Failed to save file: ${res.error}`, "error");
                 }
             })
             .catch(err => {
@@ -396,25 +421,27 @@ function fallbackCSV(csvContent, filename) {
 }
 
 function downloadPDF() {
+    const range = getDateRange();
+    if (!range) return;
+    const { fromDate, toDate } = range;
+
     const data = getSummaryDataFromTable();
     if (data.length === 0) {
-        window.showToast(tr("rep.noSummary",
-            "No summary data to download for this month."), "warning");
+        window.showToast("No summary data to download for this date range.", "warning");
         return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    const month = document.getElementById("report-month").value || "All";
     const standard = document.getElementById("report-standard").value;
 
     doc.setFontSize(18);
     doc.text(instituteName, 14, 20);
     doc.setFontSize(14);
-    doc.text("Student Attendance Monthly Summary", 14, 28);
+    doc.text("Student Attendance Summary", 14, 28);
 
     doc.setFontSize(11);
-    doc.text(`Report Month: ${month}    |    Standard: ${standard}`, 14, 36);
+    doc.text(`Report Period: ${fromDate} to ${toDate}    |    Standard: ${standard}`, 14, 36);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 42);
 
     const tableColumn = ["ZK ID", "Student Name", "Standard", "Days Present", "Working Days", "Attendance %"];
@@ -441,7 +468,7 @@ function downloadPDF() {
     });
 
     const safeStandard = standard === "All" ? "All" : standard;
-    const filename = `Student_Attendance_Summary_${safeStandard}_${month}.pdf`;
+    const filename = `Student_Attendance_Summary_${safeStandard}_${fromDate}_to_${toDate}.pdf`;
 
     if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file) {
         const dataUri = doc.output('datauristring');
