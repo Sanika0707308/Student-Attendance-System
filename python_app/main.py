@@ -156,6 +156,10 @@ def read_root():
     # "/" and sends signed-out visitors to the login page before we get here.
     return RedirectResponse(url="/static/dashboard.html")
 
+@app.get("/{page}.html")
+def redirect_html_page(page: str):
+    return RedirectResponse(url=f"/static/{page}.html")
+
 # ── Server thread ────────────────────────────────────────────────────────────
 def run_server():
     print("Starting FastAPI background server on port 8000...")
