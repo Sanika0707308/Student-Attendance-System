@@ -48,6 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
     loadStudents();
     wireRosterImportExport();
 
+    window.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("delete-student-modal")) closeDeleteStudentModal();
+        if (e.target === document.getElementById("edit-student-modal")) closeEditStudentModal();
+        if (e.target === document.getElementById("attendance-modal")) closeAttendanceModal();
+    });
+
     // Auto-fill gmail.com helper (only triggers on blur, not every keystroke)
     const autoFillGmail = function() {
         if (this.value.endsWith("@")) {
@@ -439,7 +445,7 @@ async function loadStudents() {
                     openEditStudentModal(s.id, s.name, s.zk_id, s.parent_email, s.standard);
                 });
                 tr_.querySelector('.btn-delete-student').addEventListener('click', () => {
-                    deleteStudent(s.id);
+                    openDeleteStudentModal(s);
                 });
                 const restore = tr_.querySelector('.btn-restore-student');
                 if (restore) restore.addEventListener('click', () => restoreStudent(s.id));
@@ -458,40 +464,110 @@ async function loadStudents() {
     }
 }
 
-async function deleteStudent(id) {
-    // First, check how many attendance records this student has
-    let recordCount = 0;
-    try {
-        const countResp = await window.apiFetch(`/api/attendance?student_id=${id}&limit=100000`);
-        if (countResp.ok) {
-            const records = await countResp.json();
-            recordCount = records.length;
+async function openDeleteStudentModal(student) {
+    if (!student) return;
+    const modal = document.getElementById("delete-student-modal");
+    if (!modal) return;
+
+    document.getElementById("delete_student_id").value = student.id;
+    document.getElementById("delete-student-name").textContent = student.name || "-";
+    document.getElementById("delete-student-standard").textContent = student.standard || "-";
+    document.getElementById("delete-student-zk-id").textContent = student.zk_id != null ? student.zk_id : "-";
+    document.getElementById("delete-student-email").textContent = student.parent_email || "-";
+
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        btn.textContent = tr("students.deleteBtn", "Delete");
+    }
+
+    const warnEl = document.getElementById("delete-student-records-warning");
+    if (warnEl) {
+        warnEl.style.display = "none";
+        warnEl.textContent = "";
+        try {
+            const countResp = await window.apiFetch(`/api/attendance?student_id=${student.id}&limit=100000`);
+            if (countResp.ok) {
+                const records = await countResp.json();
+                if (records.length > 0) {
+                    warnEl.textContent = trf("students.confirmDeleteRecords", { count: records.length },
+                        `⚠️ This student has ${records.length} attendance records that will also be permanently deleted.`);
+                    warnEl.style.display = "block";
+                }
+            }
+        } catch (e) {
+            // Silently ignore attendance record count lookup failure
         }
-    } catch (e) {
-        // If count check fails, proceed with basic confirmation
     }
 
-    let confirmMsg = tr("students.confirmDelete", "Are you sure you want to delete this student?");
-    if (recordCount > 0) {
-        confirmMsg = trf("students.confirmDeleteRecords", { count: recordCount },
-            `⚠️ This student has ${recordCount} attendance records that will also be permanently deleted.\n\nAre you sure you want to proceed?`);
-    }
+    modal.style.display = "block";
+}
 
-    if (!window.confirmTwice(confirmMsg,
-        tr("students.confirmDeleteAgain", "Please confirm again to permanently delete this student and related records."))) return;
+function closeDeleteStudentModal() {
+    const modal = document.getElementById("delete-student-modal");
+    if (modal) modal.style.display = "none";
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+function onDeleteCheckboxChange() {
+    const cb = document.getElementById("delete-confirm-checkbox");
+    const btn = document.getElementById("btn-confirm-delete");
+    if (cb && btn) {
+        btn.disabled = !cb.checked;
+        btn.style.opacity = cb.checked ? "1" : "0.5";
+        btn.style.cursor = cb.checked ? "pointer" : "not-allowed";
+    }
+}
+
+async function executeDeleteStudent() {
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (!cb || !cb.checked) return;
+
+    const id = document.getElementById("delete_student_id").value;
+    if (!id) return;
+
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = tr("students.deleting", "Deleting...");
+    }
 
     try {
         const resp = await window.apiFetch(`/api/students/${id}`, { method: 'DELETE' });
         if (resp.ok) {
             window.showToast(tr("students.deleted", "Student deleted successfully."), "success");
+            closeDeleteStudentModal();
             loadStudents();
-            loadClassCounts();
+            if (typeof loadClassCounts === "function") loadClassCounts();
         } else {
-            window.showToast(tr("students.deleteFailed", "Failed to delete student."), "error");
+            const data = await resp.json().catch(() => ({}));
+            window.showToast(tr("students.deleteFailed", "Failed to delete student.") +
+                (data.detail ? `: ${data.detail}` : ""), "error");
         }
     } catch (e) {
         console.error(e);
         window.showToast(tr("students.deleteError", "Error deleting student."), "error");
+    } finally {
+        if (btn) {
+            btn.textContent = tr("students.deleteBtn", "Delete");
+            if (cb && !cb.checked) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            }
+        }
     }
 }
 
