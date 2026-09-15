@@ -314,39 +314,11 @@ def create_manual_attendance(req: ManualAttendanceCreate,
 def update_attendance(attendance_id: int, req: ManualAttendanceUpdate,
                       background_tasks: BackgroundTasks,
                       db: Session = Depends(get_db)):
-    """Correct the time or status of an existing record."""
-    record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-
-    record.punch_time = req.punch_time
-    record.status = req.status
-    record.is_manual = True
-
-    if req.notify_parent:
-        # Re-open the record for sending and clear the previous failure text so
-        # the dashboard does not keep showing a stale reason.
-        record.email_sent = False
-        record.email_failure_reason = None
-    else:
-        record.email_sent = True
-
-    db.commit()
-    db.refresh(record)
-
-    if req.notify_parent:
-        background_tasks.add_task(_queue_parent_email, record.id)
-
-    return _serialize_log(record)
+    """Attendance records are view-only. Editing is disabled."""
+    raise HTTPException(status_code=403, detail="Attendance records are view-only. Editing attendance records is disabled.")
 
 
 @router.delete("/{attendance_id}")
 def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    """Remove a record — a duplicate, or an Absent the daemon got wrong."""
-    record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-
-    db.delete(record)
-    db.commit()
-    return {"message": "Attendance record deleted"}
+    """Attendance records are view-only. Deletion is disabled."""
+    raise HTTPException(status_code=403, detail="Attendance records are view-only. Deleting attendance records is disabled.")

@@ -72,10 +72,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const selectedDate = document.getElementById("attendance-date").value;
         const todayStr = new Date().toISOString().split("T")[0];
 
-        // Don't pull the table out from under someone who is mid-correction.
-        const modal = document.getElementById("record-modal");
-        if (modal && modal.classList.contains("show")) return;
-
         // Only auto-update if we are looking at today's records
         if (selectedDate === todayStr) {
             loadAttendance();
@@ -88,39 +84,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btnDailyCsv) btnDailyCsv.addEventListener("click", downloadDailyCSV);
     const btnDailyXlsx = document.getElementById("btn-export-daily-xlsx");
     if (btnDailyXlsx) btnDailyXlsx.addEventListener("click", downloadDailyExcel);
-
-    const btnAdd = document.getElementById("btn-add-record");
-    if (btnAdd) btnAdd.addEventListener("click", () => openAddRecord());
-
-    // One delegated listener instead of an inline handler per button.
-    const tbody = document.getElementById("attendance-table-body");
-    if (tbody) {
-        tbody.addEventListener("click", (event) => {
-            const button = event.target.closest("button[data-action]");
-            if (!button) return;
-            const id = parseInt(button.dataset.id, 10);
-            if (!id) return;
-            if (button.dataset.action === "edit") openEditRecord(id);
-            else if (button.dataset.action === "delete") deleteRecord(id);
-        });
-    }
-
-    // Close the modal on backdrop click and on Escape.
-    const modal = document.getElementById("record-modal");
-    if (modal) {
-        modal.addEventListener("click", (event) => {
-            if (event.target === modal) closeRecordModal();
-        });
-    }
-    document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeRecordModal();
-    });
 });
 
 async function loadAttendance() {
     const selectedDate = document.getElementById("attendance-date").value;
     const selectedStatus = document.getElementById("attendance-status") ? document.getElementById("attendance-status").value : "All";
     const selectedStandard = document.getElementById("attendance-standard") ? document.getElementById("attendance-standard").value : "All";
+    const searchNameInput = document.getElementById("search-student-name");
+    const searchName = searchNameInput ? searchNameInput.value.trim().toLowerCase() : "";
+    const searchWords = searchName ? searchName.split(/\s+/).filter(Boolean) : [];
 
     try {
         let url = '/api/attendance?limit=10000';
@@ -157,7 +129,6 @@ async function loadAttendance() {
         const tbodyEl = document.getElementById("attendance-table-body");
         tbodyEl.innerHTML = "";
         window.currentAttendanceData = [];
-        window._punchIndex = {};
 
         if (activeLogs.length === 0) {
             tbodyEl.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>${escapeHtml(
@@ -165,10 +136,12 @@ async function loadAttendance() {
             return;
         }
 
-        // Group activeLogs by student to pair IN/OUT times
+        // Group activeLogs by unique student to pair IN/OUT times
+        // Use composite key (student_zk_id + student_name) so multiple students
+        // with the same name are displayed as distinct individual records.
         const studentLogs = {};
         activeLogs.forEach(log => {
-            const key = log.student_name;
+            const key = String(log.student_zk_id || log.student_id || "") + "_" + String(log.student_name || "");
             if (!studentLogs[key]) {
                 studentLogs[key] = [];
             }
@@ -177,17 +150,20 @@ async function loadAttendance() {
 
         let rowsAdded = 0;
 
-        Object.keys(studentLogs).forEach(studentName => {
-            const punches = studentLogs[studentName];
+        Object.keys(studentLogs).forEach(key => {
+            const punches = studentLogs[key];
             // Sort by punch_time ascending
             punches.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time));
 
             const firstPunch = punches[0];
             const lastPunch = punches.length > 1 ? punches[punches.length - 1] : null;
 
+            const studentName = firstPunch.student_name || "Unknown";
+            const zkId = String(firstPunch.student_zk_id != null ? firstPunch.student_zk_id : "");
+            const standard = firstPunch.standard || "11th";
+
             // Use the last status as the effective status
             const effectiveStatus = lastPunch ? lastPunch.status : firstPunch.status;
-            const standard = firstPunch.standard || "11th";
 
             let inTime = '--';
             let outTime = '--';
@@ -203,11 +179,21 @@ async function loadAttendance() {
                 outTime = new Date(lastPunch.punch_time).toLocaleTimeString();
             }
 
+            // Filter by Status
             if (selectedStatus !== "All" && effectiveStatus !== selectedStatus) {
                 return;
             }
+            // Filter by Standard/Class
             if (selectedStandard !== "All" && standard !== selectedStandard) {
                 return;
+            }
+            // Filter by Student Name (case-insensitive, partial match, all words)
+            if (searchWords.length > 0) {
+                const lowerName = studentName.toLowerCase();
+                const matches = searchWords.every(word => lowerName.includes(word));
+                if (!matches) {
+                    return;
+                }
             }
 
             rowsAdded++;
@@ -275,41 +261,13 @@ async function loadAttendance() {
                     trf("dash.outFailureReason", { reason: outReason }, `Out Failure Reason: ${outReason}`))}</div>`;
             }
 
-            // Each punch is a separate database row, so it gets its own pair of
-            // buttons — otherwise there is no way to fix a wrong OUT time while
-            // leaving a correct IN alone. The label is translated here because it
-            // is also what the edit modal shows next to the student's name.
-            const editable = [];
-            if (inPunch) editable.push({ label: outPunch ? tr("dash.inShort", "In") : '', punch: inPunch });
-            if (outPunch) editable.push({ label: inPunch ? tr("dash.outShort", "Out") : '', punch: outPunch });
-
-            const actionButtons = editable.map(entry => {
-                window._punchIndex[entry.punch.id] = {
-                    studentName: studentName,
-                    label: entry.label,
-                    punchTime: entry.punch.punch_time,
-                    status: entry.punch.status
-                };
-                const suffix = entry.label ? ` ${entry.label}` : '';
-                const when = new Date(entry.punch.punch_time).toLocaleTimeString();
-                const shown = displayStatus(entry.punch.status);
-                const editTitle = escapeAttr(trf("att.editRowTitle", { status: shown, time: when },
-                    `Edit this ${shown} record (${when})`));
-                const deleteTitle = escapeAttr(trf("att.deleteRowTitle", { status: shown, time: when },
-                    `Delete this ${shown} record (${when})`));
-                return `
-                    <button class="btn-row" data-action="edit" data-id="${entry.punch.id}"
-                        title="${editTitle}">&#9998;${escapeHtml(suffix)}</button>
-                    <button class="btn-row danger" data-action="delete" data-id="${entry.punch.id}"
-                        title="${deleteTitle}">&#128465;</button>
-                `;
-            }).join("");
-
-            // row, not `tr` — `tr` is the translation helper at the top of this
-            // file, and a const of that name here would shadow it.
+            // View-only table row: no action buttons
             const row = document.createElement("tr");
+            row.dataset.name = studentName;
+            row.dataset.zkid = zkId;
             row.innerHTML = `
-                <td>${escapeHtml(studentName)}</td>
+                <td><div style="font-weight: 500;">${escapeHtml(studentName)}</div></td>
+                <td>${escapeHtml(zkId)}</td>
                 <td>${escapeHtml(standard)}</td>
                 <td>${inTime}</td>
                 <td>${outTime}</td>
@@ -319,7 +277,6 @@ async function loadAttendance() {
                         ${emailStatusHtml}
                     </div>
                 </td>
-                <td><div class="row-actions" style="flex-wrap: wrap;">${actionButtons}</div></td>
             `;
             tbodyEl.appendChild(row);
 
@@ -328,13 +285,9 @@ async function loadAttendance() {
                 standard: standard,
                 inTime: inTime,
                 outTime: outTime,
-                // The English original, not displayStatus() — the CSV and PDF
-                // exports read this field and must stay English.
                 status: effectiveStatus,
-                zk_id: firstPunch.student_zk_id,
-                isManual: isManual,
-                inId: inPunch ? inPunch.id : null,
-                outId: outPunch ? outPunch.id : null
+                zk_id: zkId,
+                isManual: isManual
             });
         });
 
@@ -349,221 +302,6 @@ async function loadAttendance() {
 
 function filterAttendance() {
     loadAttendance();
-}
-
-// ── Add / correct a record ───────────────────────────────────────────────────
-
-async function loadStudentsForRecord() {
-    if (_studentsForRecordLoaded) return;
-    const select = document.getElementById("record-student");
-    if (!select) return;
-    try {
-        const resp = await window.apiFetch('/api/students/?limit=100000');
-        const students = await resp.json();
-        students.sort((a, b) => a.name.localeCompare(b.name));
-        if (students.length === 0) {
-            select.innerHTML = `<option value="">${escapeHtml(
-                tr("att.noStudentsYet", "No students registered yet"))}</option>`;
-            return;
-        }
-        select.innerHTML = students
-            .map(s => {
-                const label = trf("att.studentOption",
-                    { name: s.name, standard: s.standard || '11th', zk_id: s.zk_id },
-                    `${s.name} — ${s.standard || '11th'} (ID ${s.zk_id})`);
-                return `<option value="${s.id}">${escapeHtml(label)}</option>`;
-            })
-            .join("");
-        _studentsForRecordLoaded = true;
-    } catch (e) {
-        console.error("Failed to load students for the record modal", e);
-        select.innerHTML = `<option value="">${escapeHtml(
-            tr("att.studentsLoadFailed", "Could not load students"))}</option>`;
-    }
-}
-
-function openAddRecord() {
-    const modal = document.getElementById("record-modal");
-    if (!modal) return;
-
-    document.getElementById("record-modal-title").textContent =
-        tr("att.modalAdd", "Add Attendance Record");
-    document.getElementById("record-modal-hint").innerHTML =
-        tr("att.modalHint",
-            "Use this for a punch the device missed, or to correct a wrong entry. " +
-            "Records added here are marked <strong>Manual</strong> so they stay traceable.");
-    document.getElementById("record-id").value = "";
-    document.getElementById("record-student-row").style.display = "";
-    document.getElementById("record-student-fixed-row").style.display = "none";
-    document.getElementById("record-student").required = true;
-
-    // Default to the date being viewed and the current wall-clock time — the
-    // common case is "someone was here just now and the reader didn't catch it".
-    const viewedDate = document.getElementById("attendance-date").value;
-    document.getElementById("record-date").value = viewedDate || new Date().toISOString().split("T")[0];
-    const now = new Date();
-    document.getElementById("record-time").value =
-        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    document.getElementById("record-status").value = "Present";
-    document.getElementById("record-notify").checked = false;
-    document.getElementById("record-save-btn").textContent = tr("att.saveRecord", "Save Record");
-
-    modal.classList.add("show");
-    loadStudentsForRecord();
-}
-
-function openEditRecord(id) {
-    const entry = window._punchIndex[id];
-    if (!entry) return;
-
-    const modal = document.getElementById("record-modal");
-    if (!modal) return;
-
-    document.getElementById("record-modal-title").textContent =
-        tr("att.correctTitle", "Correct Attendance Record");
-    document.getElementById("record-modal-hint").textContent =
-        tr("att.correctHint",
-            "Change the time or the status of this record. The correction is tagged Manual.");
-    document.getElementById("record-id").value = String(id);
-
-    // The student cannot move to a different record — only the punch itself is
-    // editable, so show the name as text rather than an inert dropdown.
-    document.getElementById("record-student-row").style.display = "none";
-    document.getElementById("record-student").required = false;
-    document.getElementById("record-student-fixed-row").style.display = "";
-    document.getElementById("record-student-fixed").textContent = entry.label
-        ? trf("att.punchOf", { name: entry.studentName, label: entry.label },
-            `${entry.studentName} (${entry.label} punch)`)
-        : entry.studentName;
-
-    // punch_time arrives as a naive local ISO string ("2026-08-24T09:15:00");
-    // splitting it avoids the timezone shift that Date -> toISOString would add.
-    const [datePart, timePart] = String(entry.punchTime).split("T");
-    document.getElementById("record-date").value = datePart || "";
-    document.getElementById("record-time").value = (timePart || "00:00").slice(0, 5);
-    document.getElementById("record-status").value = entry.status;
-    document.getElementById("record-notify").checked = false;
-    document.getElementById("record-save-btn").textContent = tr("att.saveChanges", "Save Changes");
-
-    modal.classList.add("show");
-}
-
-function closeRecordModal() {
-    const modal = document.getElementById("record-modal");
-    if (modal) modal.classList.remove("show");
-}
-
-async function saveRecord(event) {
-    if (event) event.preventDefault();
-
-    const id = document.getElementById("record-id").value;
-    const date = document.getElementById("record-date").value;
-    const time = document.getElementById("record-time").value;
-    const status = document.getElementById("record-status").value;
-    const notify = document.getElementById("record-notify").checked;
-    const saveBtn = document.getElementById("record-save-btn");
-
-    if (!date || !time) {
-        window.showToast(tr("att.needDateTime", "Pick both a date and a time."), "warning");
-        return;
-    }
-
-    if (id && !window.confirmTwice(
-        tr("att.confirmUpdate", "Are you sure you want to modify this attendance record?"),
-        tr("att.confirmUpdateAgain", "Please confirm again to save this attendance change."))) return;
-
-    // Naive local timestamp, matching how device punches are stored.
-    const punchTime = `${date}T${time}:00`;
-
-    const originalLabel = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.textContent = tr("common.saving", "Saving...");
-
-    try {
-        let resp;
-        if (id) {
-            resp = await window.apiFetch(`/api/attendance/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ punch_time: punchTime, status: status, notify_parent: notify })
-            });
-        } else {
-            const studentId = document.getElementById("record-student").value;
-            if (!studentId) {
-                window.showToast(tr("att.needStudent", "Select a student first."), "warning");
-                return;
-            }
-            resp = await window.apiFetch('/api/attendance/manual', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    student_id: parseInt(studentId, 10),
-                    punch_time: punchTime,
-                    status: status,
-                    notify_parent: notify
-                })
-            });
-        }
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(describeApiError(detail)
-                || tr("att.saveFailed", "Could not save the record."), "error");
-            return;
-        }
-
-        closeRecordModal();
-        window.showToast(
-            id ? tr("att.corrected", "Record corrected.")
-               : (notify ? tr("att.addedNotify", "Record added — parent will be emailed.")
-                         : tr("att.added", "Record added.")),
-            "success"
-        );
-
-        // The record may fall outside the date currently being viewed; jump to
-        // it so the admin sees what they just saved instead of an unchanged table.
-        const dateInput = document.getElementById("attendance-date");
-        if (dateInput.value !== date) dateInput.value = date;
-        loadAttendance();
-    } catch (e) {
-        console.error("Failed to save the attendance record", e);
-        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalLabel;
-    }
-}
-
-async function deleteRecord(id) {
-    const entry = window._punchIndex[id];
-    const who = entry ? entry.studentName : tr("att.thisStudent", "this student");
-    const which = entry && entry.label ? ` ${entry.label}` : "";
-    const rawWhen = entry ? new Date(entry.punchTime).toLocaleString() : "";
-    const when = rawWhen ? trf("att.atTime", { time: rawWhen }, ` at ${rawWhen}`) : "";
-    const status = entry ? displayStatus(entry.status) : '';
-
-    if (!window.confirmTwice(
-        trf("att.confirmDelete", { which, status, who, when },
-            `Delete the${which} "${status}" record for ${who}${when}?\n\nThis cannot be undone.`),
-        tr("att.confirmDeleteAgain", "Please confirm again to permanently delete this attendance record."))) {
-        return;
-    }
-
-    try {
-        const resp = await window.apiFetch(`/api/attendance/${id}`, { method: "DELETE" });
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(describeApiError(detail)
-                || tr("att.deleteFailed", "Could not delete the record."), "error");
-            return;
-        }
-        window.showToast(tr("att.deleted", "Record deleted."), "success");
-        loadAttendance();
-    } catch (e) {
-        console.error("Failed to delete the attendance record", e);
-        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
-    }
 }
 
 /**
