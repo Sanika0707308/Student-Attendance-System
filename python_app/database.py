@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Boolean, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DB_FILE
 
@@ -17,6 +17,9 @@ Base = declarative_base()
 
 class Student(Base):
     __tablename__ = "students"
+    __table_args__ = (
+        UniqueConstraint('name', 'parent_email', name='uq_students_name_parent_email'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -228,6 +231,14 @@ def ensure_schema_up_to_date():
             db.execute(text("ALTER TABLE students ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             db.commit()
             print("Migration successful for students (is_active).")
+
+        # Ensure unique index on (name, parent_email) for students
+        try:
+            db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_students_name_parent_email ON students (name, parent_email)"))
+            db.commit()
+        except Exception as uq_err:
+            db.rollback()
+            print(f"Migration note (uq_students_name_parent_email): {uq_err}")
 
         # Check for missing columns in 'holidays' table
         result = db.execute(text("PRAGMA table_info(holidays)"))

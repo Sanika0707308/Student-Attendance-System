@@ -1,15 +1,19 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from sqlalchemy import func
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 
 from database import get_db, Student, get_configured_standards
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
-# Pydantic models for validation
-from pydantic import BaseModel, Field, field_validator
-from typing import List
+TYPO_DOMAINS = {
+    "gamail.com", "gamil.com", "gmai.com", "gmal.com", "gmaill.com",
+    "yaho.com", "yaho.co.in", "hotmial.com", "outlok.com"
+}
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$')
 
 # Pydantic models for validation
 class StudentCreate(BaseModel):
@@ -18,24 +22,34 @@ class StudentCreate(BaseModel):
     parent_email: str
     standard: str = "11th"
 
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        trimmed = (v or "").strip()
+        if not trimmed:
+            raise ValueError('Student name cannot be empty')
+        return trimmed
+
     @field_validator('zk_id')
     @classmethod
     def validate_zk_id(cls, v: str) -> str:
-        if not v.isdigit():
+        trimmed = (v or "").strip()
+        if not trimmed.isdigit():
             raise ValueError('ZKTeco ID must contain only digits')
-        return v
+        return trimmed
 
     @field_validator('parent_email')
     @classmethod
     def validate_email(cls, v: str) -> str:
-        import re
-        # Basic but strict email format check: local@domain.tld
-        # Prevents malformed addresses like 'test@', 'abc123', '@domain.com'
-        # that would silently fail on every SMTP send and clog the failed-emails queue.
-        pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
-        if not re.match(pattern, v.strip()):
+        cleaned = (v or "").strip()
+        if not cleaned:
+            raise ValueError('Parent email is required')
+        if not EMAIL_REGEX.match(cleaned):
             raise ValueError('Invalid email address format. Use format: name@domain.com')
-        return v.strip().lower()
+        domain = cleaned.split("@")[1].lower()
+        if domain in TYPO_DOMAINS:
+            raise ValueError(f"Invalid email domain '{domain}'. Please check for typos (e.g. gmail.com).")
+        return cleaned.lower()
 
 class StudentRead(StudentCreate):
     id: int
@@ -62,14 +76,26 @@ def get_students(standard: str = None, include_archived: bool = False,
 
 @router.post("/", response_model=StudentRead)
 def create_student(student: StudentCreate, db: Session = Depends(get_db)):
+    # 1. ZK ID must remain unique across all students
     db_student = db.query(Student).filter(Student.zk_id == student.zk_id).first()
     if db_student:
         raise HTTPException(status_code=400, detail="Student with this ZKTeco ID already registered")
-    
+
+    # 2. Do not allow two students to have the same Name + same Parent Email combination
+    duplicate_name_email = db.query(Student).filter(
+        func.lower(func.trim(Student.name)) == func.lower(student.name.strip()),
+        func.lower(func.trim(Student.parent_email)) == student.parent_email.strip().lower(),
+    ).first()
+    if duplicate_name_email:
+        raise HTTPException(
+            status_code=400,
+            detail="A student with this Name and Parent Email combination already exists.",
+        )
+
     new_student = Student(
-        name=student.name,
+        name=student.name.strip(),
         zk_id=student.zk_id,
-        parent_email=student.parent_email,
+        parent_email=student.parent_email.strip().lower(),
         standard=student.standard
     )
     db.add(new_student)
@@ -82,7 +108,7 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    
+
     db.delete(student)
     db.commit()
     return {"message": "Student deleted"}
@@ -92,16 +118,31 @@ def update_student(student_id: int, student_data: StudentCreate, db: Session = D
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    
-    # Check if the new ZK ID belongs to someone else
+
+    # 1. Check if the new ZK ID belongs to someone else
     if student_data.zk_id != student.zk_id:
-        duplicate = db.query(Student).filter(Student.zk_id == student_data.zk_id).first()
+        duplicate = db.query(Student).filter(
+            Student.zk_id == student_data.zk_id,
+            Student.id != student_id,
+        ).first()
         if duplicate:
             raise HTTPException(status_code=400, detail="ZKTeco ID already in use")
 
-    student.name = student_data.name
+    # 2. Check if Name + Parent Email combination belongs to someone else
+    duplicate_name_email = db.query(Student).filter(
+        Student.id != student_id,
+        func.lower(func.trim(Student.name)) == func.lower(student_data.name.strip()),
+        func.lower(func.trim(Student.parent_email)) == student_data.parent_email.strip().lower(),
+    ).first()
+    if duplicate_name_email:
+        raise HTTPException(
+            status_code=400,
+            detail="A student with this Name and Parent Email combination already exists.",
+        )
+
+    student.name = student_data.name.strip()
     student.zk_id = student_data.zk_id
-    student.parent_email = student_data.parent_email
+    student.parent_email = student_data.parent_email.strip().lower()
     student.standard = student_data.standard
 
     db.commit()
@@ -198,7 +239,13 @@ async def bulk_import_students(file: UploadFile = File(...), db: Session = Depen
 
     allowed_standards = get_configured_standards(db)
     existing_ids = {s.zk_id for s in db.query(Student.zk_id).all()}
+    existing_name_emails = {
+        (s.name.strip().lower(), s.parent_email.strip().lower())
+        for s in db.query(Student.name, Student.parent_email).all()
+        if s.name and s.parent_email
+    }
     seen_in_file = set()
+    seen_name_emails_in_file = set()
 
     added = skipped = failed = 0
     results = []
@@ -257,6 +304,17 @@ async def bulk_import_students(file: UploadFile = File(...), db: Session = Depen
             record("skipped", "Duplicate ZK ID earlier in this file.")
             continue
 
+        name_email_pair = (validated.name.strip().lower(), validated.parent_email.strip().lower())
+        if name_email_pair in existing_name_emails:
+            skipped += 1
+            record("skipped", "A student with this Name and Parent Email already exists.")
+            continue
+
+        if name_email_pair in seen_name_emails_in_file:
+            skipped += 1
+            record("skipped", "Duplicate Name and Parent Email earlier in this file.")
+            continue
+
         db.add(Student(
             name=validated.name.strip(),
             zk_id=validated.zk_id,
@@ -264,6 +322,7 @@ async def bulk_import_students(file: UploadFile = File(...), db: Session = Depen
             standard=validated.standard,
         ))
         seen_in_file.add(validated.zk_id)
+        seen_name_emails_in_file.add(name_email_pair)
         added += 1
         record("added", "Imported.")
 
@@ -414,10 +473,37 @@ def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="The two classes are the same.")
 
     allowed = get_configured_standards(db)
+    if source not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{source}' is not a configured class. Add it in Settings first.",
+        )
     if target not in allowed:
         raise HTTPException(
             status_code=400,
             detail=f"'{target}' is not a configured class. Add it in Settings first.",
+        )
+
+    source_idx = allowed.index(source)
+    target_idx = allowed.index(target)
+
+    if source_idx == len(allowed) - 1:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Students in '{source}' are already in the highest configured class and cannot be moved to a lower class.",
+        )
+
+    if target_idx <= source_idx:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot move backward from '{source}' to '{target}'. Students can only be promoted to the next higher class.",
+        )
+
+    if target_idx != source_idx + 1:
+        next_class = allowed[source_idx + 1]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Students can only be promoted to the next higher class ('{next_class}').",
         )
 
     moved = db.query(Student).filter(

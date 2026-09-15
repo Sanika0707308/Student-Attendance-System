@@ -51,6 +51,8 @@ document.addEventListener("DOMContentLoaded", () => {
     wireStandardsEditor();
     wireMessageEditor();
     loadPlaceholderReference();
+    wireClassTools();
+    loadClassCounts();
 });
 
 async function loadSettings() {
@@ -96,6 +98,7 @@ async function loadSettings() {
                 .map(s => s.trim())
                 .filter(Boolean);
             renderStandards();
+            updateMoveToOptions();
         }
     } catch (e) {
         console.error("Failed to load settings from server:", e);
@@ -560,6 +563,8 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
             if (Array.isArray(standards)) {
                 _standards = standards.slice();
                 renderStandards();
+                updateMoveToOptions();
+                loadClassCounts();
             }
         } else {
             const errData = await resp.json().catch(() => null);
@@ -923,4 +928,376 @@ function escapeHtml(str) {
 // class name containing a double quote break out of an attribute.
 function escapeAttr(str) {
     return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ── Class tools ──────────────────────────────────────────────────────────────
+// Year-end promotion, forward class-to-class moves, and clearing a batch.
+
+function wireClassTools() {
+    const refresh = document.getElementById("btn-refresh-counts");
+    const preview = document.getElementById("btn-preview-promotion");
+    const move = document.getElementById("btn-move-class");
+    const clear = document.getElementById("btn-clear-class");
+    const graduateAction = document.getElementById("graduate-action");
+    const moveFrom = document.getElementById("move-from");
+
+    if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
+    if (preview) preview.addEventListener("click", previewPromotion);
+    if (move) move.addEventListener("click", moveClass);
+    if (clear) clear.addEventListener("click", clearClass);
+
+    if (graduateAction) {
+        graduateAction.addEventListener("change", () => {
+            if (window.cachedPromotionPlan) renderPromotionPlan(window.cachedPromotionPlan);
+        });
+    }
+
+    if (moveFrom) {
+        moveFrom.addEventListener("change", updateMoveToOptions);
+        moveFrom.addEventListener("standards-loaded", updateMoveToOptions);
+    }
+}
+
+function updateMoveToOptions() {
+    const moveFrom = document.getElementById("move-from");
+    const moveTo = document.getElementById("move-to");
+    if (!moveFrom || !moveTo) return;
+
+    const fromVal = (moveFrom.value || "").trim();
+    const standards = (_standards && _standards.length) ? _standards : [];
+
+    if (!fromVal) {
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.selectFromFirst", "Select source class first"))}</option>`;
+        return;
+    }
+
+    const sourceIdx = standards.indexOf(fromVal);
+    if (sourceIdx === -1) {
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.selectClass", "Select class"))}</option>`;
+        return;
+    }
+
+    if (sourceIdx >= standards.length - 1) {
+        // Highest class in configured list: no next higher class exists
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(tr("classTools.noHigherClass", "No higher class available"))}</option>`;
+        return;
+    }
+
+    const nextClass = standards[sourceIdx + 1];
+    moveTo.innerHTML = `<option value="${escapeAttr(nextClass)}" selected>${escapeHtml(nextClass)}</option>`;
+    moveTo.value = nextClass;
+}
+
+async function loadClassCounts(announce = false) {
+    const box = document.getElementById("class-counts");
+    if (!box) return;
+
+    try {
+        const resp = await window.apiFetch('/api/students/by-standard');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const rows = data.standards || [];
+        window.cachedClassCounts = rows;
+
+        if (rows.length === 0) {
+            box.innerHTML = `<span style="font-size:13px; color: var(--text-muted);">${tr("students.none", "No students enrolled.")}</span>`;
+            return;
+        }
+
+        box.innerHTML = rows.map(r => {
+            const archived = r.archived > 0
+                ? ` <span class="count-value" style="color: var(--text-muted);">+${r.archived}</span>`
+                : "";
+            const title = r.archived > 0
+                ? ` title="${escapeAttr(r.archived + " " + tr("students.archived", "Archived"))}"`
+                : "";
+            return `<span class="count-chip${r.archived > 0 && r.active === 0 ? ' archived' : ''}"${title}>` +
+                `<strong>${escapeHtml(r.standard)}</strong>` +
+                `<span class="count-value">${r.active}</span>${archived}</span>`;
+        }).join("");
+
+        if (announce) window.showToast(tr("classTools.countsRefreshed", "Class sizes updated."), "success");
+    } catch (e) {
+        console.error("Class counts failed", e);
+        box.innerHTML = `<span style="font-size:13px; color: var(--danger);">${tr("classTools.countsFailed", "Could not read the class sizes.")}</span>`;
+    }
+}
+
+/** Head count of one class, from the cached chips — used only in confirm text. */
+function cachedCountFor(standard, key = "active") {
+    const rows = window.cachedClassCounts || [];
+    const match = rows.find(r => r.standard === standard);
+    return match ? match[key] : 0;
+}
+
+async function previewPromotion() {
+    const box = document.getElementById("promotion-plan");
+    const button = document.getElementById("btn-preview-promotion");
+    if (!box) return;
+
+    box.style.display = "block";
+    box.innerHTML = `<span style="color: var(--text-muted);">${tr("classTools.loadingPlan", "Working out the plan…")}</span>`;
+    button.disabled = true;
+
+    try {
+        const resp = await window.apiFetch('/api/students/promotion-plan');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        window.cachedPromotionPlan = data;
+        renderPromotionPlan(data);
+    } catch (e) {
+        console.error("Promotion plan failed", e);
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.planFailed", "Could not build the promotion plan.")}</span>`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderPromotionPlan(data) {
+    const box = document.getElementById("promotion-plan");
+    const plan = data.plan || [];
+
+    if (plan.length < 2) {
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.needTwoClasses", "Add at least two classes in Settings before promoting.")}</span>`;
+        return;
+    }
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const graduateConsequence = {
+        archive: tr("classTools.graduatingArchive", "will be archived (records kept)"),
+        delete: tr("classTools.graduatingDelete", "will be deleted permanently, with all attendance"),
+        keep: tr("classTools.graduatingKeep", "stay where they are")
+    }[action];
+
+    const items = plan.map(step => {
+        const count = step.students;
+        if (step.graduating) {
+            if (count === 0) {
+                return `<li class="plan-empty">${escapeHtml(step.from_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+            }
+            return `<li class="plan-graduating">${escapeHtml(step.from_standard)} · ${count} ` +
+                `${tr("classTools.students", "students")} ${tr("classTools.willGraduate", "graduating")} — ${escapeHtml(graduateConsequence)}</li>`;
+        }
+        if (count === 0) {
+            return `<li class="plan-empty">${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+        }
+        return `<li>${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} · ${count} ${tr("classTools.students", "students")}</li>`;
+    }).join("");
+
+    const nobody = (data.total_moving || 0) === 0 && (data.total_graduating || 0) === 0;
+
+    box.innerHTML = `
+        <h5>${tr("classTools.planTitle", "What will happen")}</h5>
+        <ul>${items}</ul>
+        ${nobody
+            ? `<span class="plan-empty">${tr("classTools.nothingToDo", "Nothing to promote — no students are enrolled.")}</span>`
+            : `<label class="tool-label" for="promote-confirm">${tr("classTools.typePromote", "Type PROMOTE to confirm")}</label>
+               <input type="text" id="promote-confirm" class="input-field" autocomplete="off" spellcheck="false">
+               <button type="button" class="btn btn-danger" id="btn-confirm-promotion" style="margin-top: 10px;">${tr("classTools.promoteConfirmBtn", "Promote All Classes")}</button>`}
+    `;
+
+    const confirmBtn = document.getElementById("btn-confirm-promotion");
+    if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
+}
+
+async function confirmPromotion() {
+    const input = document.getElementById("promote-confirm");
+    const button = document.getElementById("btn-confirm-promotion");
+    const typed = (input.value || "").trim();
+
+    if (typed !== "PROMOTE") {
+        window.showToast(tr("classTools.promoteConfirm", "Type PROMOTE (in capitals) to run this promotion."), "warning");
+        input.focus();
+        return;
+    }
+
+    if (!window.confirmTwice(
+        tr("classTools.promoteConfirmAgain", "The promotion plan is ready. Do you want to continue?"),
+        tr("classTools.promoteFinalConfirm", "Please confirm again to promote all classes."))) return;
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("common.working", "Working…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/promote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ graduate_action: action, confirm: "PROMOTE" })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.promoteFailed", "Could not run the promotion."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        let message = trf("classTools.promoted", { moved: result.promoted },
+            `Promotion complete. ${result.promoted} students moved.`);
+        if (result.graduate_action === "archive" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedArchived", { n: result.graduated }, `${result.graduated} archived.`);
+        } else if (result.graduate_action === "delete" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedDeleted", { n: result.graduated }, `${result.graduated} deleted.`);
+        }
+        window.showToast(message, "success");
+
+        window.cachedPromotionPlan = null;
+        document.getElementById("promotion-plan").style.display = "none";
+        loadClassCounts();
+    } catch (e) {
+        console.error("Promotion failed", e);
+        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function moveClass() {
+    const from = (document.getElementById("move-from").value || "").trim();
+    const to = (document.getElementById("move-to").value || "").trim();
+    const button = document.getElementById("btn-move-class");
+
+    if (!from || !to) {
+        window.showToast(tr("classTools.moveNeedBoth", "Choose both a source and a destination class."), "warning");
+        return;
+    }
+    if (from === to) {
+        window.showToast(tr("classTools.moveSame", "Those are the same class — nothing to move."), "warning");
+        return;
+    }
+
+    const standards = (_standards && _standards.length) ? _standards : (await window.getStandards());
+    const sourceIdx = standards.indexOf(from);
+    const targetIdx = standards.indexOf(to);
+
+    if (sourceIdx === -1 || targetIdx === -1) {
+        window.showToast(tr("classTools.selectClass", "Please select valid classes."), "error");
+        return;
+    }
+
+    if (sourceIdx >= standards.length - 1) {
+        window.showToast(trf("classTools.cannotMoveHighest", { from },
+            `Cannot move from ${from}: it is the highest class.`), "error");
+        return;
+    }
+
+    if (targetIdx <= sourceIdx) {
+        window.showToast(trf("classTools.cannotMoveBackwards", { from, to },
+            `Cannot move backwards or to the same class (${from} → ${to}). Students can only be promoted to the next higher class.`), "error");
+        return;
+    }
+
+    if (targetIdx !== sourceIdx + 1) {
+        const expected = standards[sourceIdx + 1];
+        window.showToast(trf("classTools.mustMoveToNext", { from, next: expected },
+            `Students in ${from} can only be moved to the next higher class (${expected}).`), "error");
+        return;
+    }
+
+    const count = cachedCountFor(from);
+    if (count === 0) {
+        window.showToast(trf("classTools.moveNobody", { from },
+            `There are no active students in ${from}.`), "warning");
+        return;
+    }
+
+    if (!window.confirmTwice(
+        trf("classTools.moveConfirm", { n: count, from, to },
+            `Move ${count} students from ${from} to ${to}?`),
+        tr("classTools.moveConfirmAgain", "Please confirm again to move these students."))) return;
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("common.working", "Working…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/change-standard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_standard: from, to_standard: to })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.moveFailed", "Could not move that class."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        window.showToast(trf("classTools.moved", { n: result.moved, to },
+            `Moved ${result.moved} students to ${to}.`), "success");
+        loadClassCounts();
+        updateMoveToOptions();
+    } catch (e) {
+        console.error("Class move failed", e);
+        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function clearClass() {
+    const select = document.getElementById("clear-class");
+    const confirmInput = document.getElementById("clear-confirm");
+    const button = document.getElementById("btn-clear-class");
+    const cls = select.value;
+
+    if (!cls) {
+        window.showToast(tr("classTools.clearNeedClass", "Choose the class you want to clear."), "warning");
+        return;
+    }
+    if ((confirmInput.value || "").trim() !== cls) {
+        window.showToast(tr("classTools.clearMismatch", "Type the class name exactly as shown to confirm."), "warning");
+        confirmInput.focus();
+        return;
+    }
+
+    const total = cachedCountFor(cls, "total");
+    if (total === 0) {
+        window.showToast(trf("classTools.clearNobody", { cls }, `There are no students in ${cls}.`), "warning");
+        return;
+    }
+
+    if (!window.confirmTwice(
+        trf("classTools.clearConfirm", { n: total, cls },
+            `Permanently delete ${total} students in ${cls}, along with every attendance record they have?\n\nThis cannot be undone.`),
+        tr("classTools.clearConfirmAgain", "Please confirm again to permanently delete this class."))) return;
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("common.working", "Working…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ standard: cls, confirm: cls, include_archived: true })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.clearFailed", "Could not clear that class."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        window.showToast(trf("classTools.cleared",
+            { students: result.students_deleted, records: result.attendance_deleted },
+            `Deleted ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`), "success");
+        confirmInput.value = "";
+        loadClassCounts();
+    } catch (e) {
+        console.error("Class clear failed", e);
+        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
 }

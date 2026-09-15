@@ -27,11 +27,26 @@ function displayStatus(status) {
     return typeof window.tStatus === "function" ? window.tStatus(status) : status;
 }
 
+function validateParentEmail(email) {
+    if (!email || typeof email !== "string") {
+        return { valid: false, error: tr("students.emailRequired", "Parent email is required.") };
+    }
+    const trimmed = email.trim();
+    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+    if (!pattern.test(trimmed)) {
+        return { valid: false, error: tr("students.emailFormatError", "Invalid email address format. Example: abc@gmail.com") };
+    }
+    const domain = trimmed.split('@')[1].toLowerCase();
+    const typoDomains = ["gamail.com", "gamil.com", "gmai.com", "gmal.com", "gmaill.com", "yaho.com", "yaho.co.in", "hotmial.com", "outlok.com"];
+    if (typoDomains.includes(domain)) {
+        return { valid: false, error: trf("students.emailTypoDomain", { domain }, `Invalid email domain "${domain}". Please check for typos (e.g. gmail.com).`) };
+    }
+    return { valid: true, email: trimmed.toLowerCase() };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     loadStudents();
     wireRosterImportExport();
-    wireClassTools();
-    loadClassCounts();
 
     // Auto-fill gmail.com helper (only triggers on blur, not every keystroke)
     const autoFillGmail = function() {
@@ -45,10 +60,15 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const name = document.getElementById("student_name").value;
-        const zk_id = document.getElementById("zk_id").value;
-        const parent_email = document.getElementById("parent_email").value;
+        const name = (document.getElementById("student_name").value || "").trim();
+        const zk_id = (document.getElementById("zk_id").value || "").trim();
+        const rawEmail = document.getElementById("parent_email").value || "";
         const standard = document.getElementById("standard").value;
+
+        if (!name) {
+            window.showToast(tr("students.nameRequired", "Student name is required."), "error");
+            return;
+        }
 
         // Front-end numeric check for ZK ID
         if (!/^\d+$/.test(zk_id)) {
@@ -56,19 +76,32 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Email validation
+        const emailCheck = validateParentEmail(rawEmail);
+        if (!emailCheck.valid) {
+            window.showToast(emailCheck.error, "error");
+            return;
+        }
+        const parent_email = emailCheck.email;
+
         // Front-end duplicate checks
         const existingStudents = window.cachedStudents || [];
+        const normName = name.toLowerCase();
 
-        const nameCount = existingStudents.filter(s => s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
-        const emailCount = existingStudents.filter(s => s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
-
-        if (nameCount >= 2) {
-            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+        // 1. ZK ID must remain unique across all students
+        const duplicateZk = existingStudents.find(s => String(s.zk_id).trim() === zk_id);
+        if (duplicateZk) {
+            window.showToast(tr("students.zkAlreadyRegistered", "Student with this ZKTeco ID already registered."), "error");
             return;
         }
 
-        if (emailCount >= 2) {
-            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+        // 2. Do not allow two students to have the same Name + same Parent Email combination
+        const duplicateNameEmail = existingStudents.find(s =>
+            (s.name || "").trim().toLowerCase() === normName &&
+            (s.parent_email || "").trim().toLowerCase() === parent_email
+        );
+        if (duplicateNameEmail) {
+            window.showToast(tr("students.duplicateNameEmail", "A student with this Name and Parent Email already exists."), "error");
             return;
         }
 
@@ -83,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.showToast(tr("students.added", "Student added successfully!"), "success");
                 document.getElementById("addStudentForm").reset();
                 loadStudents();
-                loadClassCounts();
             } else {
                 const data = await resp.json();
                 window.showToast(tr("students.failedPrefix", "Failed") + ": " +
@@ -99,10 +131,15 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
 
         const id = document.getElementById("edit_student_id").value;
-        const name = document.getElementById("edit_student_name").value;
-        const zk_id = document.getElementById("edit_zk_id").value;
-        const parent_email = document.getElementById("edit_parent_email").value;
+        const name = (document.getElementById("edit_student_name").value || "").trim();
+        const zk_id = (document.getElementById("edit_zk_id").value || "").trim();
+        const rawEmail = document.getElementById("edit_parent_email").value || "";
         const standard = document.getElementById("edit_standard").value;
+
+        if (!name) {
+            window.showToast(tr("students.nameRequired", "Student name is required."), "error");
+            return;
+        }
 
         // Front-end numeric check for ZK ID
         if (!/^\d+$/.test(zk_id)) {
@@ -110,19 +147,33 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Email validation
+        const emailCheck = validateParentEmail(rawEmail);
+        if (!emailCheck.valid) {
+            window.showToast(emailCheck.error, "error");
+            return;
+        }
+        const parent_email = emailCheck.email;
+
         // Front-end duplicate checks excluding the student being edited
         const existingStudents = window.cachedStudents || [];
+        const normName = name.toLowerCase();
 
-        const nameCount = existingStudents.filter(s => s.id != id && s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
-        const emailCount = existingStudents.filter(s => s.id != id && s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
-
-        if (nameCount >= 2) {
-            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+        // 1. ZK ID must remain unique across all students
+        const duplicateZk = existingStudents.find(s => s.id != id && String(s.zk_id).trim() === zk_id);
+        if (duplicateZk) {
+            window.showToast(tr("students.zkAlreadyRegistered", "ZKTeco ID already in use."), "error");
             return;
         }
 
-        if (emailCount >= 2) {
-            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+        // 2. Do not allow two students to have the same Name + same Parent Email combination
+        const duplicateNameEmail = existingStudents.find(s =>
+            s.id != id &&
+            (s.name || "").trim().toLowerCase() === normName &&
+            (s.parent_email || "").trim().toLowerCase() === parent_email
+        );
+        if (duplicateNameEmail) {
+            window.showToast(tr("students.duplicateNameEmail", "A student with this Name and Parent Email already exists."), "error");
             return;
         }
 
@@ -143,7 +194,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.showToast(tr("students.updated", "Student updated successfully!"), "success");
                 closeEditStudentModal();
                 loadStudents();
-                loadClassCounts();
             } else {
                 const data = await resp.json();
                 window.showToast(tr("students.failedPrefix", "Failed") + ": " +
@@ -325,326 +375,6 @@ function renderImportReport(report) {
     }
 
     wrapper.style.display = "block";
-}
-
-// ── Class tools ──────────────────────────────────────────────────────────────
-// Promotion, class-to-class moves and clearing a finished batch. All three used
-// to be one-student-at-a-time jobs.
-
-function wireClassTools() {
-    const refresh = document.getElementById("btn-refresh-counts");
-    const preview = document.getElementById("btn-preview-promotion");
-    const move = document.getElementById("btn-move-class");
-    const clear = document.getElementById("btn-clear-class");
-    const graduateAction = document.getElementById("graduate-action");
-
-    if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
-    if (preview) preview.addEventListener("click", previewPromotion);
-    if (move) move.addEventListener("click", moveClass);
-    if (clear) clear.addEventListener("click", clearClass);
-
-    // Changing what happens to the final class rewrites the last line of the
-    // preview, so re-render it from the plan already fetched rather than making
-    // the admin press Preview again.
-    if (graduateAction) {
-        graduateAction.addEventListener("change", () => {
-            if (window.cachedPromotionPlan) renderPromotionPlan(window.cachedPromotionPlan);
-        });
-    }
-}
-
-async function loadClassCounts(announce = false) {
-    const box = document.getElementById("class-counts");
-    if (!box) return;
-
-    try {
-        const resp = await window.apiFetch('/api/students/by-standard');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        const rows = data.standards || [];
-        window.cachedClassCounts = rows;
-
-        if (rows.length === 0) {
-            box.innerHTML = `<span style="font-size:13px; color: var(--text-muted);">${tr("students.none", "No students enrolled.")}</span>`;
-            return;
-        }
-
-        box.innerHTML = rows.map(r => {
-            const archived = r.archived > 0
-                ? ` <span class="count-value" style="color: var(--text-muted);">+${r.archived}</span>`
-                : "";
-            const title = r.archived > 0
-                ? ` title="${escapeAttr(r.archived + " " + tr("students.archived", "Archived"))}"`
-                : "";
-            return `<span class="count-chip${r.archived > 0 && r.active === 0 ? ' archived' : ''}"${title}>` +
-                `<strong>${escapeHtml(r.standard)}</strong>` +
-                `<span class="count-value">${r.active}</span>${archived}</span>`;
-        }).join("");
-
-        if (announce) window.showToast(tr("classTools.countsRefreshed", "Class sizes updated."), "success");
-    } catch (e) {
-        console.error("Class counts failed", e);
-        box.innerHTML = `<span style="font-size:13px; color: var(--danger);">${tr("classTools.countsFailed", "Could not read the class sizes.")}</span>`;
-    }
-}
-
-/** Head count of one class, from the cached chips — used only in confirm text. */
-function cachedCountFor(standard, key = "active") {
-    const rows = window.cachedClassCounts || [];
-    const match = rows.find(r => r.standard === standard);
-    return match ? match[key] : 0;
-}
-
-async function previewPromotion() {
-    const box = document.getElementById("promotion-plan");
-    const button = document.getElementById("btn-preview-promotion");
-    if (!box) return;
-
-    box.style.display = "block";
-    box.innerHTML = `<span style="color: var(--text-muted);">${tr("classTools.loadingPlan", "Working out the plan…")}</span>`;
-    button.disabled = true;
-
-    try {
-        const resp = await window.apiFetch('/api/students/promotion-plan');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        window.cachedPromotionPlan = data;
-        renderPromotionPlan(data);
-    } catch (e) {
-        console.error("Promotion plan failed", e);
-        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.planFailed", "Could not build the promotion plan.")}</span>`;
-    } finally {
-        button.disabled = false;
-    }
-}
-
-function renderPromotionPlan(data) {
-    const box = document.getElementById("promotion-plan");
-    const plan = data.plan || [];
-
-    if (plan.length < 2) {
-        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.needTwoClasses", "Add at least two classes in Settings before promoting.")}</span>`;
-        return;
-    }
-
-    const action = document.getElementById("graduate-action").value || "archive";
-    const graduateConsequence = {
-        archive: tr("classTools.graduatingArchive", "will be archived (records kept)"),
-        delete: tr("classTools.graduatingDelete", "will be deleted permanently, with all attendance"),
-        keep: tr("classTools.graduatingKeep", "stay where they are")
-    }[action];
-
-    const items = plan.map(step => {
-        const count = step.students;
-        if (step.graduating) {
-            if (count === 0) {
-                return `<li class="plan-empty">${escapeHtml(step.from_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
-            }
-            return `<li class="plan-graduating">${escapeHtml(step.from_standard)} · ${count} ` +
-                `${tr("classTools.students", "students")} ${tr("classTools.willGraduate", "graduating")} — ${escapeHtml(graduateConsequence)}</li>`;
-        }
-        if (count === 0) {
-            return `<li class="plan-empty">${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
-        }
-        return `<li>${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} · ${count} ${tr("classTools.students", "students")}</li>`;
-    }).join("");
-
-    const nobody = (data.total_moving || 0) === 0 && (data.total_graduating || 0) === 0;
-
-    box.innerHTML = `
-        <h5>${tr("classTools.planTitle", "What will happen")}</h5>
-        <ul>${items}</ul>
-        ${nobody
-            ? `<span class="plan-empty">${tr("classTools.nothingToDo", "Nothing to promote — no students are enrolled.")}</span>`
-            : `<label class="tool-label" for="promote-confirm">${tr("classTools.typePromote", "Type PROMOTE to confirm")}</label>
-               <input type="text" id="promote-confirm" class="input-field" autocomplete="off" spellcheck="false">
-               <button type="button" class="btn btn-danger" id="btn-confirm-promotion" style="margin-top: 10px;">${tr("classTools.promoteConfirmBtn", "Promote All Classes")}</button>`}
-    `;
-
-    const confirmBtn = document.getElementById("btn-confirm-promotion");
-    if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
-}
-
-async function confirmPromotion() {
-    const input = document.getElementById("promote-confirm");
-    const button = document.getElementById("btn-confirm-promotion");
-    const typed = (input.value || "").trim();
-
-    // The phrase is checked here and again on the server. This copy only exists
-    // to keep a mis-click from becoming a round trip.
-    if (typed !== "PROMOTE") {
-        window.showToast(tr("classTools.promoteConfirm", "Type PROMOTE (in capitals) to run this promotion."), "warning");
-        input.focus();
-        return;
-    }
-
-    if (!window.confirmTwice(
-        tr("classTools.promoteConfirmAgain", "The promotion plan is ready. Do you want to continue?"),
-        tr("classTools.promoteFinalConfirm", "Please confirm again to promote all classes."))) return;
-
-    const action = document.getElementById("graduate-action").value || "archive";
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/promote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ graduate_action: action, confirm: "PROMOTE" })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.promoteFailed", "Could not run the promotion."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        let message = trf("classTools.promoted", { moved: result.promoted },
-            `Promotion complete. ${result.promoted} students moved.`);
-        if (result.graduate_action === "archive" && result.graduated > 0) {
-            message += " " + trf("classTools.promotedArchived", { n: result.graduated }, `${result.graduated} archived.`);
-        } else if (result.graduate_action === "delete" && result.graduated > 0) {
-            message += " " + trf("classTools.promotedDeleted", { n: result.graduated }, `${result.graduated} deleted.`);
-        }
-        window.showToast(message, "success");
-
-        // The plan is spent: its head counts describe a roster that no longer
-        // exists, and leaving the confirm box on screen invites a second run.
-        window.cachedPromotionPlan = null;
-        document.getElementById("promotion-plan").style.display = "none";
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Promotion failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
-}
-
-async function moveClass() {
-    const from = document.getElementById("move-from").value;
-    const to = document.getElementById("move-to").value;
-    const button = document.getElementById("btn-move-class");
-
-    if (!from || !to) {
-        window.showToast(tr("classTools.moveNeedBoth", "Choose both a source and a destination class."), "warning");
-        return;
-    }
-    if (from === to) {
-        window.showToast(tr("classTools.moveSame", "Those are the same class — nothing to move."), "warning");
-        return;
-    }
-
-    const count = cachedCountFor(from);
-    if (count === 0) {
-        window.showToast(trf("classTools.moveNobody", { from },
-            `There are no active students in ${from}.`), "warning");
-        return;
-    }
-
-    if (!window.confirmTwice(
-        trf("classTools.moveConfirm", { n: count, from, to },
-            `Move ${count} students from ${from} to ${to}?`),
-        tr("classTools.moveConfirmAgain", "Please confirm again to move these students."))) return;
-
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/change-standard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from_standard: from, to_standard: to })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.moveFailed", "Could not move that class."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        window.showToast(trf("classTools.moved", { n: result.moved, to },
-            `Moved ${result.moved} students to ${to}.`), "success");
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Class move failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
-}
-
-async function clearClass() {
-    const select = document.getElementById("clear-class");
-    const confirmInput = document.getElementById("clear-confirm");
-    const button = document.getElementById("btn-clear-class");
-    const cls = select.value;
-
-    if (!cls) {
-        window.showToast(tr("classTools.clearNeedClass", "Choose the class you want to clear."), "warning");
-        return;
-    }
-    // The typed name is what the server checks too. Asking for it here keeps a
-    // stray click on a red button from deleting a class.
-    if ((confirmInput.value || "").trim() !== cls) {
-        window.showToast(tr("classTools.clearMismatch", "Type the class name exactly as shown to confirm."), "warning");
-        confirmInput.focus();
-        return;
-    }
-
-    const total = cachedCountFor(cls, "total");
-    if (total === 0) {
-        window.showToast(trf("classTools.clearNobody", { cls }, `There are no students in ${cls}.`), "warning");
-        return;
-    }
-
-    if (!window.confirmTwice(
-        trf("classTools.clearConfirm", { n: total, cls },
-            `Permanently delete ${total} students in ${cls}, along with every attendance record they have?\n\nThis cannot be undone.`),
-        tr("classTools.clearConfirmAgain", "Please confirm again to permanently delete this class."))) return;
-
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/bulk-delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ standard: cls, confirm: cls, include_archived: true })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.clearFailed", "Could not clear that class."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        window.showToast(trf("classTools.cleared",
-            { students: result.students_deleted, records: result.attendance_deleted },
-            `Deleted ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`), "success");
-        confirmInput.value = "";
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Class clear failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
 }
 
 // ── Roster ───────────────────────────────────────────────────────────────────

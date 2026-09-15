@@ -40,8 +40,10 @@ if __name__ == '__main__':
     # Use ABSOLUTE path for source so PyInstaller finds it regardless of CWD.
     # Relative paths can silently fail when the entry script is in a subdirectory.
     project_root = os.path.abspath('.')
+    python_app_src = os.path.join(project_root, 'python_app')
     frontend_src = os.path.join(project_root, 'frontend')
     frontend_data = f'{frontend_src};frontend'
+    biometric_dll = os.path.join(project_root, 'zkemkeeper.dll')
 
     # ── Pre-build check ───────────────────────────────────────────────────────
     if not os.path.isdir('frontend'):
@@ -50,7 +52,11 @@ if __name__ == '__main__':
     if not os.path.isfile(os.path.join('frontend', 'dashboard.html')):
         print("ERROR: frontend/dashboard.html not found. Frontend is incomplete.")
         sys.exit(1)
+    if not os.path.isfile(biometric_dll):
+        print(f"ERROR: biometric DLL not found: {biometric_dll}")
+        sys.exit(1)
     print("[Pre-check] Frontend directory verified OK.")
+    print("[Pre-check] Biometric DLL verified OK.")
 
     # Clean previous builds
     print("Cleaning old builds...")
@@ -59,6 +65,18 @@ if __name__ == '__main__':
             shutil.rmtree(folder)
 
     hidden_imports = [
+        # Local modules use direct imports because python_app is the runtime
+        # module root. Keep this explicit so the frozen app has the same root.
+        'config',
+        'auth',
+        'backup_service',
+        'crypto_utils',
+        'database',
+        'email_service',
+        'message_templates',
+        'reports_service',
+        'time_bound_service',
+        'zkteco_service',
         'uvicorn',
         'fastapi',
         'sqlalchemy',
@@ -81,9 +99,11 @@ if __name__ == '__main__':
     PyInstaller.__main__.run([
         backend_main,
         '--name=InstituteAttendance',
+        f'--paths={python_app_src}',
         '--noconsole',      # Hide the terminal window
         '--onefile',        # Create a single .exe
         f'--add-data={frontend_data}',
+        f'--add-binary={biometric_dll};.',
         '--clean'
     ] + hidden_imports_args)
 

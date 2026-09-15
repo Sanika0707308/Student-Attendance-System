@@ -35,3 +35,5 @@ dist/
 build/
 *.exe
 *.zip
+_log_offset.txt
+.claude/

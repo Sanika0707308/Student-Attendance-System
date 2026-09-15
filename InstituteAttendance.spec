@@ -3,10 +3,10 @@
 
 a = Analysis(
     ['python_app\\main.py'],
-    pathex=[],
-    binaries=[],
+    pathex=['D:\\6th sem\\Student-Attendance-System-1.9-stable\\python_app'],
+    binaries=[('D:\\6th sem\\Student-Attendance-System-1.9-stable\\zkemkeeper.dll', '.')],
     datas=[('D:\\6th sem\\Student-Attendance-System-1.9-stable\\frontend', 'frontend')],
-    hiddenimports=['uvicorn', 'fastapi', 'sqlalchemy', 'pydantic', 'pydantic.deprecated.decorator', 'sqlite3', 'email.mime', 'email.mime.multipart', 'email.mime.text', 'structlog', 'cryptography'],
+    hiddenimports=['config', 'auth', 'backup_service', 'crypto_utils', 'database', 'email_service', 'message_templates', 'reports_service', 'time_bound_service', 'zkteco_service', 'uvicorn', 'fastapi', 'sqlalchemy', 'pydantic', 'pydantic.deprecated.decorator', 'sqlite3', 'email.mime', 'email.mime.multipart', 'email.mime.text', 'structlog', 'cryptography'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

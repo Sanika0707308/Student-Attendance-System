@@ -32,8 +32,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; IMPORTANT: Build the python executable using `python build.py` first so the /dist folder exists before compiling this script.
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-; Include the DLL if it is needed by the application
-Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion regserver
+; zkemkeeper.dll is a runtime dependency, not an ActiveX/COM server.
+; Do not use regserver: Inno would call regsvr32 and fail on a normal DLL.
+Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
