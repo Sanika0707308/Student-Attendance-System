@@ -405,6 +405,8 @@ async function loadStudents() {
                 const archived = s.is_active === false;
                 const tr_ = document.createElement("tr");
                 if (archived) tr_.className = "is-archived";
+                tr_.dataset.name = s.name || "";
+                tr_.dataset.zkid = String(s.zk_id != null ? s.zk_id : "");
 
                 // The archived badge goes in the name cell, not the standard
                 // cell — filterStudents() compares that one against the class
@@ -515,25 +517,54 @@ async function restoreStudent(id) {
 }
 
 function filterStudents() {
-    const term = document.getElementById("search-id").value.toLowerCase();
-    const standardFilter = document.getElementById("filter-standard").value;
-    const rows = document.getElementById("student-table-body").getElementsByTagName("tr");
+    const nameInput = document.getElementById("search-name");
+    const idInput = document.getElementById("search-id");
+    const nameTerm = (nameInput ? nameInput.value : "").trim().toLowerCase();
+    const zkTerm = (idInput ? idInput.value : "").trim().toLowerCase();
+    const standardFilter = (document.getElementById("filter-standard")?.value || "All").trim();
+    const tbody = document.getElementById("student-table-body");
+    if (!tbody) return;
+    const rows = tbody.getElementsByTagName("tr");
+
+    let visibleCount = 0;
+    let studentRowsExist = false;
+    let noMatchRow = document.getElementById("no-matching-students-row");
 
     for (let i = 0; i < rows.length; i++) {
-        const zkIdCol = rows[i].getElementsByTagName("td")[3];
-        const standardCol = rows[i].getElementsByTagName("td")[2];
-        if (zkIdCol && standardCol) {
-            const zkIdText = zkIdCol.textContent || zkIdCol.innerText;
-            const standardText = standardCol.textContent || standardCol.innerText;
+        const row = rows[i];
+        if (row.id === "no-matching-students-row") continue;
+        const tds = row.getElementsByTagName("td");
+        if (tds.length < 5) continue;
 
-            const matchSearch = zkIdText.toLowerCase().includes(term);
-            const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+        studentRowsExist = true;
+        const nameText = (row.dataset.name !== undefined ? row.dataset.name : (tds[1].textContent || tds[1].innerText || "")).trim();
+        const zkIdText = (row.dataset.zkid !== undefined ? row.dataset.zkid : (tds[3].textContent || tds[3].innerText || "")).trim();
+        const standardText = (tds[2].textContent || tds[2].innerText || "").trim();
 
-            if (matchSearch && matchStandard) {
-                rows[i].style.display = "";
+        const matchName = !nameTerm || nameText.toLowerCase().includes(nameTerm);
+        const matchZk = !zkTerm || zkIdText.toLowerCase().includes(zkTerm);
+        const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+
+        if (matchName && matchZk && matchStandard) {
+            row.style.display = "";
+            visibleCount++;
+        } else {
+            row.style.display = "none";
+        }
+    }
+
+    if (studentRowsExist) {
+        if (visibleCount === 0) {
+            if (!noMatchRow) {
+                noMatchRow = document.createElement("tr");
+                noMatchRow.id = "no-matching-students-row";
+                noMatchRow.innerHTML = `<td colspan="6" style="text-align:center; color: var(--text-muted);">${escapeHtml(tr("students.noMatch", "No students match the search criteria."))}</td>`;
+                tbody.appendChild(noMatchRow);
             } else {
-                rows[i].style.display = "none";
+                noMatchRow.style.display = "";
             }
+        } else if (noMatchRow) {
+            noMatchRow.style.display = "none";
         }
     }
 }
