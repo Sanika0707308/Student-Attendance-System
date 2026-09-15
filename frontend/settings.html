@@ -140,6 +140,93 @@
                         you press <b>Save Settings</b> at the bottom of this page.</small>
                 </div>
 
+                <!-- CLASS TOOLS -->
+                <div id="class-tools-card" style="margin-top: 25px; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--panel-bg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div>
+                            <h4 style="margin: 0 0 4px; border: none; padding: 0;" data-i18n="classTools.title">Class Tools</h4>
+                            <p style="margin: 0; font-size: 13px; color: var(--text-muted);" data-i18n="classTools.hint">
+                                End-of-year operations that used to need one student at a time.
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="btn-refresh-counts" data-i18n="classTools.refresh">Refresh</button>
+                    </div>
+
+                    <div class="class-counts" id="class-counts">
+                        <span style="font-size: 13px; color: var(--text-muted);" data-i18n="common.loading">Loading...</span>
+                    </div>
+
+                    <div class="class-tool-grid">
+                        <!-- Year-end promotion -->
+                        <section class="class-tool-panel">
+                            <h4 data-i18n="classTools.promoteHeading">Year-End Promotion</h4>
+                            <p data-i18n="classTools.promoteHint">
+                                Moves every class up one step, in the order your class list is written in
+                                Settings. The final class has nowhere left to go, so choose what happens to it.
+                            </p>
+
+                            <label class="tool-label" for="graduate-action" data-i18n="classTools.graduateAction">Final-year students</label>
+                            <select id="graduate-action" class="input-field">
+                                <option value="archive" data-i18n="classTools.graduateArchive">Archive — keep their records, hide them from the roster</option>
+                                <option value="delete" data-i18n="classTools.graduateDelete">Delete permanently — remove students and all their attendance</option>
+                                <option value="keep" data-i18n="classTools.graduateKeep">Leave them in the same class</option>
+                            </select>
+
+                            <div class="tool-actions">
+                                <button type="button" class="btn btn-primary" id="btn-preview-promotion" data-i18n="classTools.promoteBtn">Preview Promotion</button>
+                            </div>
+
+                            <div id="promotion-plan" class="tool-plan" style="display:none;"></div>
+                        </section>
+
+                        <!-- Move one class -->
+                        <section class="class-tool-panel">
+                            <h4 data-i18n="classTools.moveHeading">Move One Class</h4>
+                            <p data-i18n="classTools.moveHint">
+                                Promotes students from one class into the next higher class according to the configured class sequence.
+                            </p>
+
+                            <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                                <div style="flex:1; min-width: 120px;">
+                                    <label class="tool-label" for="move-from" data-i18n="classTools.moveFrom">From</label>
+                                    <select id="move-from" class="input-field" data-standards="one"
+                                        data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
+                                </div>
+                                <div style="flex:1; min-width: 120px;">
+                                    <label class="tool-label" for="move-to" data-i18n="classTools.moveTo">To</label>
+                                    <select id="move-to" class="input-field">
+                                        <option value="" disabled selected data-i18n="classTools.selectFromFirst">Select source class first</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="tool-actions">
+                                <button type="button" class="btn btn-warning" id="btn-move-class" data-i18n="classTools.moveBtn">Move Students</button>
+                            </div>
+                        </section>
+
+                        <!-- Clear a class -->
+                        <section class="class-tool-panel danger">
+                            <h4 data-i18n="classTools.clearHeading">Clear a Class</h4>
+                            <p data-i18n="classTools.clearHint">
+                                Deletes every student in one class along with their attendance records.
+                                Use this for a batch that has finished.
+                            </p>
+
+                            <label class="tool-label" for="clear-class" data-i18n="classTools.selectClass">Select class</label>
+                            <select id="clear-class" class="input-field" data-standards="one"
+                                data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
+
+                            <label class="tool-label" for="clear-confirm" style="margin-top: 10px;" data-i18n="classTools.typeToConfirm">Type the class name to confirm</label>
+                            <input type="text" id="clear-confirm" class="input-field" autocomplete="off">
+
+                            <div class="tool-actions">
+                                <button type="button" class="btn btn-danger" id="btn-clear-class" data-i18n="classTools.clearBtn">Delete Class</button>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
                 <br>
 
                 <div>
@@ -370,25 +457,13 @@
                     style="margin-top: 30px; padding: 20px; border: 1px dashed var(--danger); border-radius: 8px; background-color: var(--panel-danger-bg);">
                     <h4 style="color: var(--danger); margin-bottom: 5px;">🔥 <span data-i18n="set.dangerZone">Danger Zone</span></h4>
 
-                    <div style="margin-bottom: 20px;">
+                    <div>
                         <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.wipeZkHint">If the ZKTeco hardware is running
                             out of memory (100k limit), use this button to safely wipe the machine. The local records
                             will be retained.</small>
                         <button type="button" id="btnClearLogs"
                             style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
                             data-i18n="set.wipeZk">Wipe ZKTeco Logs</button>
-                    </div>
-
-                    <div style="border-top: 1px dashed var(--danger); padding-top: 15px;">
-                        <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.resetDbHint">Wipe all local data from the system (deletes all students, attendances, and holiday settings). The system will return to a clean, default state.</small>
-                        <button type="button" id="btnResetDatabase"
-                            style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
-                            data-i18n="set.resetDb">Reset Database</button>
-                        <!-- Points at the class-wise tools rather than duplicating them:
-                             clearing one class at a time lives next to the roster it
-                             affects, where the head counts are already on screen. -->
-                        <small style="color: var(--text-muted); display: block; margin-top: 10px;"
-                            data-i18n-html="set.resetClassHint">To clear one class at a time instead of everything, use <b>Class Tools</b> below.</small>
                     </div>
                 </div>
                 <div style="margin-top: 30px; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--panel-bg);">
@@ -459,93 +534,6 @@
 
                 <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;" data-i18n="set.saveSettings">Save Settings</button>
             </form>
-        </div>
-
-        <!-- CLASS TOOLS -->
-        <div class="table-box" id="class-tools-card" style="max-width: 1100px; margin: 30px auto; padding: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <div>
-                    <h3 style="margin: 0 0 4px;" data-i18n="classTools.title">Class Tools</h3>
-                    <p style="margin: 0; font-size: 13px; color: var(--text-muted);" data-i18n="classTools.hint">
-                        End-of-year operations that used to need one student at a time.
-                    </p>
-                </div>
-                <button type="button" class="btn btn-secondary" id="btn-refresh-counts" data-i18n="classTools.refresh">Refresh</button>
-            </div>
-
-            <div class="class-counts" id="class-counts">
-                <span style="font-size: 13px; color: var(--text-muted);" data-i18n="common.loading">Loading...</span>
-            </div>
-
-            <div class="class-tool-grid">
-                <!-- Year-end promotion -->
-                <section class="class-tool-panel">
-                    <h4 data-i18n="classTools.promoteHeading">Year-End Promotion</h4>
-                    <p data-i18n="classTools.promoteHint">
-                        Moves every class up one step, in the order your class list is written in
-                        Settings. The final class has nowhere left to go, so choose what happens to it.
-                    </p>
-
-                    <label class="tool-label" for="graduate-action" data-i18n="classTools.graduateAction">Final-year students</label>
-                    <select id="graduate-action" class="input-field">
-                        <option value="archive" data-i18n="classTools.graduateArchive">Archive — keep their records, hide them from the roster</option>
-                        <option value="delete" data-i18n="classTools.graduateDelete">Delete permanently — remove students and all their attendance</option>
-                        <option value="keep" data-i18n="classTools.graduateKeep">Leave them in the same class</option>
-                    </select>
-
-                    <div class="tool-actions">
-                        <button type="button" class="btn btn-primary" id="btn-preview-promotion" data-i18n="classTools.promoteBtn">Preview Promotion</button>
-                    </div>
-
-                    <div id="promotion-plan" class="tool-plan" style="display:none;"></div>
-                </section>
-
-                <!-- Move one class -->
-                <section class="class-tool-panel">
-                    <h4 data-i18n="classTools.moveHeading">Move One Class</h4>
-                    <p data-i18n="classTools.moveHint">
-                        Promotes students from one class into the next higher class according to the configured class sequence.
-                    </p>
-
-                    <div style="display:flex; gap:10px; flex-wrap: wrap;">
-                        <div style="flex:1; min-width: 120px;">
-                            <label class="tool-label" for="move-from" data-i18n="classTools.moveFrom">From</label>
-                            <select id="move-from" class="input-field" data-standards="one"
-                                data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
-                        </div>
-                        <div style="flex:1; min-width: 120px;">
-                            <label class="tool-label" for="move-to" data-i18n="classTools.moveTo">To</label>
-                            <select id="move-to" class="input-field">
-                                <option value="" disabled selected data-i18n="classTools.selectFromFirst">Select source class first</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="tool-actions">
-                        <button type="button" class="btn btn-warning" id="btn-move-class" data-i18n="classTools.moveBtn">Move Students</button>
-                    </div>
-                </section>
-
-                <!-- Clear a class -->
-                <section class="class-tool-panel danger">
-                    <h4 data-i18n="classTools.clearHeading">Clear a Class</h4>
-                    <p data-i18n="classTools.clearHint">
-                        Deletes every student in one class along with their attendance records.
-                        Use this for a batch that has finished.
-                    </p>
-
-                    <label class="tool-label" for="clear-class" data-i18n="classTools.selectClass">Select class</label>
-                    <select id="clear-class" class="input-field" data-standards="one"
-                        data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
-
-                    <label class="tool-label" for="clear-confirm" style="margin-top: 10px;" data-i18n="classTools.typeToConfirm">Type the class name to confirm</label>
-                    <input type="text" id="clear-confirm" class="input-field" autocomplete="off">
-
-                    <div class="tool-actions">
-                        <button type="button" class="btn btn-danger" id="btn-clear-class" data-i18n="classTools.clearBtn">Delete Class</button>
-                    </div>
-                </section>
-            </div>
         </div>
     </div>
 

@@ -632,48 +632,6 @@ document.getElementById('btnClearLogs').addEventListener('click', async () => {
     }
 });
 
-document.getElementById('btnResetDatabase').addEventListener('click', async () => {
-    if (!confirm(tr("set.confirmResetDb1",
-        "CRITICAL WARNING: This will permanently delete ALL students, ALL attendance logs, and ALL holidays from the local database. It will also reset the settings to default.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure you want to completely reset the system database?"))) {
-        return;
-    }
-
-    if (!confirm(tr("set.confirmResetDb2",
-        "FINAL CONFIRMATION: Type 'RESET' in the next prompt if you are sure."))) {
-        return;
-    }
-
-    // The typed word stays "RESET" in every language: it is matched literally,
-    // and a translated keyword would be one more thing to get wrong while
-    // standing in front of a warning about permanent deletion.
-    const confirmation = prompt(tr("set.resetPrompt",
-        "Please type 'RESET' (all caps) to confirm database wipe:"));
-    if (confirmation !== "RESET") {
-        window.showToast(tr("set.resetCancelled",
-            "Wipe cancelled. Confirmation text did not match."), "error");
-        return;
-    }
-
-    window.showToast(tr("set.resetting", "Wiping database and resetting system..."), "warning");
-
-    try {
-        const resp = await window.apiFetch('/api/settings/reset-db', { method: 'POST' });
-        const data = await resp.json();
-
-        if (data.success) {
-            window.showToast(data.message, "success");
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            window.showToast(tr("set.resetError", "Error resetting database: ") + data.message, "error");
-        }
-    } catch (e) {
-        console.error(e);
-        window.showToast(tr("set.resetNetwork", "Network Error: Failed to reset database."), "error");
-    }
-});
-
 document.getElementById('btnExportDb').addEventListener('click', async () => {
     window.showToast(tr("set.exportPreparing", "Preparing database export..."), "warning");
     try {
@@ -956,6 +914,16 @@ function wireClassTools() {
         moveFrom.addEventListener("change", updateMoveToOptions);
         moveFrom.addEventListener("standards-loaded", updateMoveToOptions);
     }
+
+    const clearConfirm = document.getElementById("clear-confirm");
+    if (clearConfirm) {
+        clearConfirm.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                clearClass();
+            }
+        });
+    }
 }
 
 function updateMoveToOptions() {
@@ -1098,6 +1066,16 @@ function renderPromotionPlan(data) {
 
     const confirmBtn = document.getElementById("btn-confirm-promotion");
     if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
+
+    const promoteInput = document.getElementById("promote-confirm");
+    if (promoteInput) {
+        promoteInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                confirmPromotion();
+            }
+        });
+    }
 }
 
 async function confirmPromotion() {
