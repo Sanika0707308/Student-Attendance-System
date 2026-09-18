@@ -941,6 +941,26 @@ function wireClassTools() {
     updateMoveToOptions();
 }
 
+function extractStandardNumber(std) {
+    const m = String(std || "").match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+}
+
+function findNextStandard(source, standardsList) {
+    if (!source || !Array.isArray(standardsList) || standardsList.length === 0) return null;
+    const sourceNum = extractStandardNumber(source);
+    if (sourceNum !== null) {
+        const next = standardsList.find(s => extractStandardNumber(s) === sourceNum + 1);
+        if (next) return next;
+        return null;
+    }
+    const idx = standardsList.findIndex(s => s && s.trim().toLowerCase() === source.trim().toLowerCase());
+    if (idx !== -1 && idx + 1 < standardsList.length) {
+        return standardsList[idx + 1];
+    }
+    return null;
+}
+
 async function updateMoveToOptions() {
     const moveFrom = document.getElementById("move-from");
     const moveTo = document.getElementById("move-to");
@@ -958,6 +978,14 @@ async function updateMoveToOptions() {
     if (!standards.length) {
         standards = Array.from(moveFrom.options).map(o => o.value).filter(Boolean);
     }
+
+    // Sort standards logically by numeric value if available
+    standards.sort((a, b) => {
+        const numA = extractStandardNumber(a);
+        const numB = extractStandardNumber(b);
+        if (numA !== null && numB !== null) return numA - numB;
+        return 0;
+    });
 
     // If moveFrom has no class options yet, but standards are resolved, populate moveFrom
     const validFromOptions = Array.from(moveFrom.options).filter(o => Boolean(o.value));
@@ -980,48 +1008,28 @@ async function updateMoveToOptions() {
             : "Select source class first";
         moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
         moveTo.disabled = true;
+        moveTo.value = "";
         return;
     }
 
-    // Destination classes: all available classes except the chosen From class (case-insensitive trim match)
-    const destinationClasses = standards.filter(s => s && s.trim().toLowerCase() !== fromVal.toLowerCase());
+    // Strictly resolve the immediately next standard
+    const nextStd = findNextStandard(fromVal, standards);
 
-    if (destinationClasses.length === 0) {
+    if (!nextStd) {
+        // Highest standard or no next sequential class exists
         const msg = typeof window.tr === "function"
-            ? window.tr("classTools.noOtherClasses", "No other classes available")
-            : "No other classes available";
+            ? window.tr("classTools.noHigherClass", "No next standard available")
+            : "No next standard available";
         moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
         moveTo.disabled = true;
+        moveTo.value = "";
         return;
     }
 
+    // Immediately next standard only
     moveTo.disabled = false;
-
-    // Determine default selected destination:
-    // 1. Preserve current selection if it's already one of the valid destination classes
-    // 2. Otherwise prefer the next sequential class in the standards sequence
-    // 3. Fallback to the first valid destination class
-    const prevToVal = (moveTo.value || "").trim();
-    let selectedDest = "";
-
-    if (prevToVal && destinationClasses.includes(prevToVal)) {
-        selectedDest = prevToVal;
-    } else {
-        const fromIdx = standards.findIndex(s => s && s.trim().toLowerCase() === fromVal.toLowerCase());
-        if (fromIdx !== -1 && fromIdx + 1 < standards.length && destinationClasses.includes(standards[fromIdx + 1])) {
-            selectedDest = standards[fromIdx + 1];
-        } else {
-            selectedDest = destinationClasses[0];
-        }
-    }
-
-    let html = "";
-    destinationClasses.forEach(dest => {
-        const isSel = (dest === selectedDest) ? " selected" : "";
-        html += `<option value="${escapeAttr(dest)}"${isSel}>${escapeHtml(dest)}</option>`;
-    });
-    moveTo.innerHTML = html;
-    moveTo.value = selectedDest;
+    moveTo.innerHTML = `<option value="${escapeAttr(nextStd)}" selected>${escapeHtml(nextStd)}</option>`;
+    moveTo.value = nextStd;
 }
 
 window.updateMoveToOptions = updateMoveToOptions;
@@ -1218,13 +1226,54 @@ async function moveClass() {
         return;
     }
 
-    const standards = (_standards && _standards.length) ? _standards : (await window.getStandards());
-    const sourceIdx = standards.indexOf(from);
-    const targetIdx = standards.indexOf(to);
+    const standards = (_standards && _standards.length) ? [..._standards] : (await window.getStandards());
+    standards.sort((a, b) => {
+        const numA = extractStandardNumber(a);
+        const numB = extractStandardNumber(b);
+        if (numA !== null && numB !== null) return numA - numB;
+        return 0;
+    });
 
-    if (sourceIdx === -1 || targetIdx === -1) {
-        window.showToast("Please select valid classes.", "error");
-        return;
+    const fromNum = extractStandardNumber(from);
+    const toNum = extractStandardNumber(to);
+
+    if (fromNum !== null && toNum !== null) {
+        if (toNum < fromNum) {
+            window.showToast(`Cannot move: destination class (${to}) is lower than source class (${from}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (toNum === fromNum) {
+            window.showToast("Those are the same class — nothing to move.", "warning");
+            return;
+        }
+        if (toNum > fromNum + 1) {
+            window.showToast(`Cannot skip standards (${from} -> ${to}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (toNum !== fromNum + 1) {
+            window.showToast("Students can move only to the immediately next higher standard.", "error");
+            return;
+        }
+    } else {
+        const sourceIdx = standards.findIndex(s => s && s.trim().toLowerCase() === from.toLowerCase());
+        const targetIdx = standards.findIndex(s => s && s.trim().toLowerCase() === to.toLowerCase());
+
+        if (sourceIdx === -1 || targetIdx === -1) {
+            window.showToast("Please select valid classes.", "error");
+            return;
+        }
+        if (targetIdx < sourceIdx) {
+            window.showToast(`Cannot move: destination class (${to}) is lower than source class (${from}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (targetIdx === sourceIdx) {
+            window.showToast("Those are the same class — nothing to move.", "warning");
+            return;
+        }
+        if (targetIdx !== sourceIdx + 1) {
+            window.showToast(`Cannot skip standards (${from} -> ${to}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
     }
 
     const count = cachedCountFor(from);

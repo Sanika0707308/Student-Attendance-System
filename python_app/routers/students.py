@@ -469,6 +469,30 @@ def bulk_delete_by_standard(req: BulkDeleteRequest, db: Session = Depends(get_db
     }
 
 
+def extract_standard_number(std: str):
+    """Extract numeric value from standard name, e.g. '10th' -> 10, 'Grade 11' -> 11."""
+    m = re.search(r'\d+', str(std or ''))
+    return int(m.group()) if m else None
+
+
+def get_next_sequential_standard(source: str, allowed: List[str]):
+    """Determine the immediately next standard based on numeric value or list sequence."""
+    source_num = extract_standard_number(source)
+    if source_num is not None:
+        for s in allowed:
+            if extract_standard_number(s) == source_num + 1:
+                return s
+        return None
+    # Fallback to configured list order for non-numeric classes
+    try:
+        idx = allowed.index(source)
+        if idx + 1 < len(allowed):
+            return allowed[idx + 1]
+    except ValueError:
+        pass
+    return None
+
+
 @router.post("/change-standard")
 def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
     """Move every student in one class to another class."""
@@ -477,7 +501,7 @@ def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
     if not source or not target:
         raise HTTPException(status_code=400, detail="Both classes must be given.")
     if source == target:
-        raise HTTPException(status_code=400, detail="Source and destination classes cannot be the same.")
+        raise HTTPException(status_code=400, detail="Source and destination standards cannot be the same.")
 
     allowed = get_configured_standards(db)
     if source not in allowed:
@@ -490,6 +514,44 @@ def change_standard(req: ChangeStandardRequest, db: Session = Depends(get_db)):
             status_code=400,
             detail=f"'{target}' is not a configured class. Add it in Settings first.",
         )
+
+    # Strict sequential academic progression validation
+    source_num = extract_standard_number(source)
+    target_num = extract_standard_number(target)
+
+    if source_num is not None and target_num is not None:
+        if target_num < source_num:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot move: destination class ({target}) is lower than source class ({source}). Students can move only to the immediately next higher standard."
+            )
+        if target_num > source_num + 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot skip standards ({source} -> {target}). Students can move only to the immediately next higher standard."
+            )
+        if target_num != source_num + 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Students can move only to the immediately next higher standard."
+            )
+    else:
+        # Non-numeric standards validation based on configured sequence
+        try:
+            source_idx = allowed.index(source)
+            target_idx = allowed.index(target)
+            if target_idx < source_idx:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot move: destination class ({target}) is lower than source class ({source}). Students can move only to the immediately next higher standard."
+                )
+            if target_idx != source_idx + 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot skip standards ({source} -> {target}). Students can move only to the immediately next higher standard."
+                )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid standard selected.")
 
     moved = db.query(Student).filter(
         Student.standard == source,
