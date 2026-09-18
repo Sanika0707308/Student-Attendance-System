@@ -30,7 +30,7 @@ def find_iscc():
 
 ISCC_PATH = find_iscc()
 ISS_FILE = "installer.iss"
-VERSION = "1.9"
+VERSION = "2.0"
 
 
 if __name__ == '__main__':
