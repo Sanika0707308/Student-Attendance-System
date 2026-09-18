@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel, Field, field_validator
-from typing import List
+from typing import List, Optional
 
 from database import get_db, Student, Attendance, SystemSettings, get_configured_standards
 
@@ -107,15 +107,42 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     db.refresh(new_student)
     return new_student
 
+class BulkDeactivateRequest(BaseModel):
+    student_ids: List[int]
+    standard: Optional[str] = None
+
+
 @router.delete("/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    db.delete(student)
+    # Preserve historical attendance records by removing the student
+    # from the active student roster instead of hard-deleting
+    student.is_active = False
     db.commit()
-    return {"message": "Student deleted"}
+    return {"message": "Student deleted", "id": student.id, "success": True}
+
+
+@router.post("/bulk-deactivate")
+def bulk_deactivate_students(req: BulkDeactivateRequest, db: Session = Depends(get_db)):
+    """Remove multiple students from the active roster while preserving attendance history."""
+    if not req.student_ids:
+        raise HTTPException(status_code=400, detail="No student IDs provided for deletion.")
+
+    query = db.query(Student).filter(Student.id.in_(req.student_ids))
+    if req.standard and req.standard != "All":
+        query = query.filter(Student.standard == req.standard)
+
+    updated_count = query.update({Student.is_active: False}, synchronize_session=False)
+    db.commit()
+
+    return {
+        "success": True,
+        "deleted_count": updated_count,
+        "message": f"Successfully deleted {updated_count} student(s) from the active student list."
+    }
 
 @router.put("/{student_id}", response_model=StudentRead)
 def update_student(student_id: int, student_data: StudentCreate, db: Session = Depends(get_db)):

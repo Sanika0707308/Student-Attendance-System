@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("click", (e) => {
         if (e.target === document.getElementById("delete-student-modal")) closeDeleteStudentModal();
+        if (e.target === document.getElementById("bulk-delete-modal")) closeBulkDeleteModal();
         if (e.target === document.getElementById("edit-student-modal")) closeEditStudentModal();
         if (e.target === document.getElementById("attendance-modal")) closeAttendanceModal();
     });
@@ -385,13 +386,109 @@ function renderImportReport(report) {
 
 // ── Roster ───────────────────────────────────────────────────────────────────
 
-async function loadStudents() {
-    const showArchived = document.getElementById("show-archived");
-    const includeArchived = !!(showArchived && showArchived.checked);
+function getSelectedStandard() {
+    const raw = (document.getElementById("filter-standard")?.value || "All").trim();
+    const lower = raw.toLowerCase();
+    if (!raw || lower === "all" || lower === "all standards" || raw === "सर्व") {
+        return "All";
+    }
+    return raw;
+}
 
+function getVisibleStudentCheckboxes() {
+    const tbody = document.getElementById("student-table-body");
+    if (!tbody) return [];
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const checkboxes = [];
+    rows.forEach(r => {
+        if (r.id === "no-matching-students-row") return;
+        if (r.style.display === "none") return;
+        const cb = r.querySelector(".student-select-cb");
+        if (cb) checkboxes.push(cb);
+    });
+    return checkboxes;
+}
+
+function updateBulkSelectionUI() {
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const checkedCount = visibleCbs.filter(cb => cb.checked).length;
+    const totalVisible = visibleCbs.length;
+
+    const countLabel = document.getElementById("selected-students-count");
+    if (countLabel) {
+        countLabel.textContent = `(${checkedCount} selected)`;
+    }
+
+    const selectAllCb = document.getElementById("select-all-checkbox");
+    const tableSelectAllCb = document.getElementById("table-select-all");
+    const isAllChecked = totalVisible > 0 && checkedCount === totalVisible;
+    const isIndeterminate = checkedCount > 0 && checkedCount < totalVisible;
+
+    if (selectAllCb) {
+        selectAllCb.checked = isAllChecked;
+        selectAllCb.indeterminate = isIndeterminate;
+    }
+    if (tableSelectAllCb) {
+        tableSelectAllCb.checked = isAllChecked;
+        tableSelectAllCb.indeterminate = isIndeterminate;
+    }
+
+    const btnDeleteSelected = document.getElementById("btn-delete-selected");
+    if (btnDeleteSelected) {
+        btnDeleteSelected.disabled = checkedCount === 0;
+        btnDeleteSelected.style.opacity = checkedCount > 0 ? "1" : "0.5";
+        btnDeleteSelected.style.cursor = checkedCount > 0 ? "pointer" : "not-allowed";
+    }
+}
+
+function onStudentCheckboxChange() {
+    updateBulkSelectionUI();
+}
+
+function toggleSelectAll(checked) {
+    const currentStd = getSelectedStandard();
+    if (currentStd === "All") {
+        window.showToast("Please select a specific standard/class first to use bulk selection.", "warning");
+        const selectAllCb = document.getElementById("select-all-checkbox");
+        const tableSelectAllCb = document.getElementById("table-select-all");
+        if (selectAllCb) selectAllCb.checked = false;
+        if (tableSelectAllCb) tableSelectAllCb.checked = false;
+        return;
+    }
+
+    const visibleCbs = getVisibleStudentCheckboxes();
+    visibleCbs.forEach(cb => {
+        cb.checked = !!checked;
+    });
+    updateBulkSelectionUI();
+}
+
+function onStandardFilterChange() {
+    // When changing standard filter, clear selections to avoid cross-standard accidental delete
+    const allCbs = document.querySelectorAll(".student-select-cb");
+    allCbs.forEach(cb => cb.checked = false);
+    const selectAllCb = document.getElementById("select-all-checkbox");
+    const tableSelectAllCb = document.getElementById("table-select-all");
+    if (selectAllCb) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    }
+    if (tableSelectAllCb) {
+        tableSelectAllCb.checked = false;
+        tableSelectAllCb.indeterminate = false;
+    }
+
+    filterStudents();
+    updateBulkSelectionUI();
+}
+
+window.toggleSelectAll = toggleSelectAll;
+window.onStudentCheckboxChange = onStudentCheckboxChange;
+window.onStandardFilterChange = onStandardFilterChange;
+
+async function loadStudents() {
     try {
-        const resp = await window.apiFetch(
-            `/api/students${includeArchived ? '?include_archived=true' : ''}`);
+        const resp = await window.apiFetch('/api/students');
         const students = await resp.json();
         window.cachedStudents = students;
 
@@ -399,45 +496,37 @@ async function loadStudents() {
         tbody.innerHTML = "";
 
         if (students.length === 0) {
-            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>`;
         } else {
             const attendanceLabel = "Attendance";
             const editLabel = "Edit";
             const deleteLabel = "Delete";
-            const restoreLabel = "Restore";
-            const archivedLabel = "Archived";
 
             students.forEach(s => {
-                const archived = s.is_active === false;
                 const tr_ = document.createElement("tr");
-                if (archived) tr_.className = "is-archived";
                 tr_.dataset.name = s.name || "";
                 tr_.dataset.zkid = String(s.zk_id != null ? s.zk_id : "");
                 tr_.setAttribute('data-name', s.name || '');
                 tr_.setAttribute('data-zkid', String(s.zk_id != null ? s.zk_id : ''));
 
-                // The archived badge goes in the name cell, not the standard
-                // cell — filterStudents() compares that one against the class
-                // filter as exact text.
-                const restoreBtn = archived
-                    ? `<button class="btn-restore-student" data-id="${s.id}" style="background-color: var(--success); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(restoreLabel)}</button>`
-                    : "";
-
                 tr_.innerHTML = `
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="student-select-cb" data-id="${s.id}" data-standard="${escapeAttr(s.standard || '')}" data-name="${escapeAttr(s.name || '')}" style="cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px;">
+                    </td>
                     <td>${escapeHtml(String(s.id))}</td>
-                    <td>${escapeHtml(s.name)}${archived ? `<span class="archived-badge">${escapeHtml(archivedLabel)}</span>` : ""}</td>
+                    <td>${escapeHtml(s.name)}</td>
                     <td>${escapeHtml(s.standard || '')}</td>
                     <td>${escapeHtml(s.zk_id)}</td>
                     <td>${escapeHtml(s.parent_email)}</td>
                     <td style="display: flex; gap: 5px; align-items: center; white-space: nowrap; flex-wrap: nowrap;">
                         <button class="btn-add btn-attendance-modal" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(attendanceLabel)}</button>
                         <button class="btn-edit-modal" data-id="${s.id}" style="background-color: var(--warning); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(editLabel)}</button>
-                        ${restoreBtn}
                         <button class="btn-delete btn-delete-student" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(deleteLabel)}</button>
                     </td>
                 `;
 
-                // Attach event listeners safely (no inline JS string injection)
+                // Attach event listeners safely
+                tr_.querySelector('.student-select-cb').addEventListener('change', onStudentCheckboxChange);
                 tr_.querySelector('.btn-attendance-modal').addEventListener('click', () => {
                     openAttendanceModal(s.id, s.name, s.zk_id);
                 });
@@ -447,19 +536,18 @@ async function loadStudents() {
                 tr_.querySelector('.btn-delete-student').addEventListener('click', () => {
                     openDeleteStudentModal(s);
                 });
-                const restore = tr_.querySelector('.btn-restore-student');
-                if (restore) restore.addEventListener('click', () => restoreStudent(s.id));
 
                 tbody.appendChild(tr_);
             });
         }
         // Apply filter in case text is already typed
         filterStudents();
+        updateBulkSelectionUI();
     } catch (e) {
         console.error("Error fetching students:", e);
         const tbody = document.getElementById("student-table-body");
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--danger);'>${tr("students.serverUnreachable", "Could not reach the server.")}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color: var(--danger);'>${tr("students.serverUnreachable", "Could not reach the server.")}</td></tr>`;
         }
     }
 }
@@ -484,24 +572,6 @@ async function openDeleteStudentModal(student) {
         btn.style.opacity = "0.5";
         btn.style.cursor = "not-allowed";
         btn.textContent = "Delete";
-    }
-
-    const warnEl = document.getElementById("delete-student-records-warning");
-    if (warnEl) {
-        warnEl.style.display = "none";
-        warnEl.textContent = "";
-        try {
-            const countResp = await window.apiFetch(`/api/attendance?student_id=${student.id}&limit=100000`);
-            if (countResp.ok) {
-                const records = await countResp.json();
-                if (records.length > 0) {
-                    warnEl.textContent = `⚠️ This student has ${records.length} attendance records that will also be permanently deleted.`;
-                    warnEl.style.display = "block";
-                }
-            }
-        } catch (e) {
-            // Silently ignore attendance record count lookup failure
-        }
     }
 
     modal.style.display = "block";
@@ -548,7 +618,7 @@ async function executeDeleteStudent() {
         if (resp.ok) {
             window.showToast("Student deleted successfully.", "success");
             closeDeleteStudentModal();
-            loadStudents();
+            await loadStudents();
             if (typeof loadClassCounts === "function") loadClassCounts();
         } else {
             const data = await resp.json().catch(() => ({}));
@@ -569,6 +639,123 @@ async function executeDeleteStudent() {
         }
     }
 }
+
+function openBulkDeleteModal() {
+    const currentStd = getSelectedStandard();
+    if (currentStd === "All") {
+        window.showToast("Please select a specific standard/class first.", "warning");
+        return;
+    }
+
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const selectedIds = visibleCbs.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id, 10));
+
+    if (selectedIds.length === 0) {
+        window.showToast("Please select at least one student to delete.", "warning");
+        return;
+    }
+
+    const modal = document.getElementById("bulk-delete-modal");
+    if (!modal) return;
+
+    document.getElementById("bulk-delete-count").textContent = selectedIds.length;
+    document.getElementById("bulk-delete-standard").textContent = currentStd;
+
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        btn.textContent = "Delete";
+    }
+
+    modal.style.display = "block";
+}
+
+function closeBulkDeleteModal() {
+    const modal = document.getElementById("bulk-delete-modal");
+    if (modal) modal.style.display = "none";
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+function onBulkDeleteCheckboxChange() {
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (cb && btn) {
+        btn.disabled = !cb.checked;
+        btn.style.opacity = cb.checked ? "1" : "0.5";
+        btn.style.cursor = cb.checked ? "pointer" : "not-allowed";
+    }
+}
+
+async function executeBulkDelete() {
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (!cb || !cb.checked) return;
+
+    const currentStd = getSelectedStandard();
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const selectedIds = visibleCbs.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id, 10));
+
+    if (selectedIds.length === 0) {
+        closeBulkDeleteModal();
+        return;
+    }
+
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Deleting...";
+    }
+
+    try {
+        const resp = await window.apiFetch("/api/students/bulk-deactivate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                student_ids: selectedIds,
+                standard: currentStd !== "All" ? currentStd : null
+            })
+        });
+
+        if (resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            window.showToast(data.message || `Deleted ${selectedIds.length} student(s) successfully.`, "success");
+            closeBulkDeleteModal();
+            await loadStudents();
+            if (typeof loadClassCounts === "function") loadClassCounts();
+        } else {
+            const data = await resp.json().catch(() => ({}));
+            window.showToast("Failed to delete students." + (data.detail ? `: ${data.detail}` : ""), "error");
+        }
+    } catch (e) {
+        console.error(e);
+        window.showToast("Error deleting students.", "error");
+    } finally {
+        if (btn) {
+            btn.textContent = "Delete";
+            if (cb && !cb.checked) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            }
+        }
+    }
+}
+
+window.openBulkDeleteModal = openBulkDeleteModal;
+window.closeBulkDeleteModal = closeBulkDeleteModal;
+window.onBulkDeleteCheckboxChange = onBulkDeleteCheckboxChange;
+window.executeBulkDelete = executeBulkDelete;
 
 /** Bring one archived student back — a leaver repeating the year, usually. */
 async function restoreStudent(id) {
@@ -650,7 +837,7 @@ function filterStudents() {
             if (!noMatchRow) {
                 noMatchRow = document.createElement("tr");
                 noMatchRow.id = "no-matching-students-row";
-                noMatchRow.innerHTML = `<td colspan="6" style="text-align:center; color: var(--text-muted);">No students match the search criteria.</td>`;
+                noMatchRow.innerHTML = `<td colspan="7" style="text-align:center; color: var(--text-muted);">No students match the search criteria.</td>`;
                 tbody.appendChild(noMatchRow);
             } else {
                 noMatchRow.style.display = "";
@@ -659,6 +846,7 @@ function filterStudents() {
             noMatchRow.style.display = "none";
         }
     }
+    updateBulkSelectionUI();
 }
 
 function openAttendanceModal(studentId, studentName, studentZkId) {

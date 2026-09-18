@@ -26,6 +26,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from sqlalchemy import or_
 from database import Attendance, Holiday, Student, SystemSettings
 
 # Short codes for the day-by-day grid, so a month fits on one screen.
@@ -115,18 +116,19 @@ def compute_monthly_report(db, month: str = None, standard_filter: str = "All",
 
     holiday_index = _holiday_index(db)
 
-    # Active roster only: an archived (graduated) student would otherwise show
-    # up every month with 0% attendance.
-    students = (db.query(Student)
-                .filter(Student.is_active == True)  # noqa: E712 — SQL boolean
-                .order_by(Student.standard, Student.name).all())
-    if standard_filter and standard_filter != "All":
-        students = [s for s in students if (s.standard or "11th") == standard_filter]
-
     logs = (db.query(Attendance)
             .filter(Attendance.punch_time >= start, Attendance.punch_time <= end)
             .order_by(Attendance.punch_time.asc())
             .all())
+
+    # Include active roster plus any inactive/graduated students who have attendance
+    # records in this date range, ensuring historical reports remain complete.
+    attended_student_ids = {log.student_id for log in logs if log.student_id}
+    students = (db.query(Student)
+                .filter(or_(Student.is_active == True, Student.id.in_(attended_student_ids)))  # noqa: E712
+                .order_by(Student.standard, Student.name).all())
+    if standard_filter and standard_filter != "All":
+        students = [s for s in students if (s.standard or "11th") == standard_filter]
 
     # Drop anything recorded on a day that turned out to be a holiday for that
     # student's class — a class-specific holiday must never count against the
@@ -230,19 +232,19 @@ def compute_daily_report(db, date_str: str, standard_filter: str = "All") -> dic
     mid = _mid_time(db)
     holiday_index = _holiday_index(db)
 
-    # Active roster only: an archived (graduated) student would otherwise show
-    # up every month with 0% attendance.
-    students = (db.query(Student)
-                .filter(Student.is_active == True)  # noqa: E712 — SQL boolean
-                .order_by(Student.standard, Student.name).all())
-    if standard_filter and standard_filter != "All":
-        students = [s for s in students if (s.standard or "11th") == standard_filter]
-
     logs = (db.query(Attendance)
             .filter(Attendance.punch_time >= datetime.combine(target, time_cls.min),
                     Attendance.punch_time <= datetime.combine(target, time_cls.max))
             .order_by(Attendance.punch_time.asc())
             .all())
+
+    # Include active roster plus any inactive students who punched on this date
+    attended_student_ids = {log.student_id for log in logs if log.student_id}
+    students = (db.query(Student)
+                .filter(or_(Student.is_active == True, Student.id.in_(attended_student_ids)))  # noqa: E712
+                .order_by(Student.standard, Student.name).all())
+    if standard_filter and standard_filter != "All":
+        students = [s for s in students if (s.standard or "11th") == standard_filter]
 
     by_student = {}
     for log in logs:

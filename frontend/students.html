@@ -92,7 +92,7 @@
                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                     <div>
                         <label for="filter-standard" style="margin-right: 5px;"><span data-i18n="common.standard">Standard</span>:</label>
-                        <select id="filter-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All" onchange="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        <select id="filter-standard" data-standards="all" data-all-label-key="common.all" data-all-label="All" onchange="onStandardFilterChange()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
                             <option value="All" data-i18n="common.all">All</option>
                         </select>
                     </div>
@@ -104,18 +104,30 @@
                         <label for="search-id" style="margin-right: 5px;">Search ZK ID:</label>
                         <input type="text" id="search-id" placeholder="Search ZK ID..." oninput="filterStudents()" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main);">
                     </div>
-                    <!-- Graduates archived by the promotion tool are hidden by default;
-                         this brings them back into view so they can be restored. -->
-                    <label class="inline-check">
-                        <input type="checkbox" id="show-archived" onchange="loadStudents()">
-                        <span>Show archived</span>
+                </div>
+            </div>
+
+            <!-- Bulk Student Selection Controls -->
+            <div id="bulk-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; font-size: 14px; margin: 0; user-select: none;">
+                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary);">
+                        <span>Select All</span>
                     </label>
+                    <span id="selected-students-count" style="font-size: 13px; color: var(--text-muted);">(0 selected)</span>
+                </div>
+                <div>
+                    <button type="button" id="btn-delete-selected" onclick="openBulkDeleteModal()" disabled style="padding: 7px 16px; border-radius: 4px; border: none; background: var(--danger); color: white; cursor: not-allowed; opacity: 0.5; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <span>🗑️</span>
+                        <span>Delete Selected</span>
+                    </button>
                 </div>
             </div>
 
             <table>
                 <thead>
                     <tr>
+                        <th style="width: 38px; text-align: center;"><input type="checkbox" id="table-select-all" onchange="toggleSelectAll(this.checked)" title="Select All" style="cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px;"></th>
                         <th data-i18n="common.id">ID</th>
                         <th data-i18n="common.name">Name</th>
                         <th data-i18n="common.standard">Standard</th>
@@ -125,7 +137,7 @@
                     </tr>
                 </thead>
                 <tbody id="student-table-body">
-                    <tr><td colspan="6" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
+                    <tr><td colspan="7" style="text-align:center; color: var(--text-muted);" data-i18n="common.loading">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -203,7 +215,7 @@
                 <span>⚠️</span> <span>Delete Student</span>
             </h2>
             <p style="margin: 8px 0 15px 0; color: var(--text-muted); font-size: 14px;">
-                Are you sure you want to delete this student? This action cannot be undone.
+                Are you sure you want to delete this student? This action cannot be easily undone.
             </p>
 
             <div style="background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.7;">
@@ -211,7 +223,9 @@
                 <div><strong>Standard:</strong> <span id="delete-student-standard">-</span></div>
                 <div><strong>ZK ID:</strong> <span id="delete-student-zk-id">-</span></div>
                 <div><strong>Email:</strong> <span id="delete-student-email">-</span></div>
-                <div id="delete-student-records-warning" style="display: none; margin-top: 8px; color: var(--danger); font-size: 13px; font-weight: 600;"></div>
+                <div style="margin-top: 8px; color: var(--success); font-size: 13px; font-weight: 500;">
+                    Their previous attendance records will be preserved.
+                </div>
             </div>
 
             <input type="hidden" id="delete_student_id">
@@ -219,7 +233,7 @@
             <div style="margin: 15px 0 20px 0; padding: 10px 12px; background: rgba(220, 53, 69, 0.08); border: 1px solid rgba(220, 53, 69, 0.25); border-radius: 6px;">
                 <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; line-height: 1.4; color: var(--text-main); font-weight: 500; margin: 0;">
                     <input type="checkbox" id="delete-confirm-checkbox" onchange="onDeleteCheckboxChange()" style="margin-top: 2px; cursor: pointer; width: 16px; height: 16px; accent-color: var(--danger);">
-                    <span>I understand that deleting this student will remove the student record and associated data.</span>
+                    <span>I understand that this student will be removed from the active student list.</span>
                 </label>
             </div>
 
@@ -230,12 +244,44 @@
         </div>
     </div>
 
+    <!-- Bulk Delete Students Confirmation Modal -->
+    <div id="bulk-delete-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: var(--overlay-bg);">
+        <div style="background-color: var(--card-bg); color: var(--text-main); margin: 10% auto; padding: 25px; border-radius: 8px; width: 85%; max-width: 500px; position: relative; box-shadow: var(--shadow-lg);">
+            <span onclick="closeBulkDeleteModal()" style="color: var(--text-main); float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px;">&times;</span>
+            <h2 style="margin-top: 0; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span> <span>Delete Students</span>
+            </h2>
+            <p style="margin: 8px 0 15px 0; color: var(--text-muted); font-size: 14px;">
+                This action cannot be easily undone.
+            </p>
+
+            <div style="background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.7;">
+                <div>You are about to delete <strong id="bulk-delete-count">0</strong> students from <strong id="bulk-delete-standard">-</strong>.</div>
+                <div style="margin-top: 8px; color: var(--success); font-weight: 500; font-size: 13px;">
+                    Their previous attendance records will be preserved.
+                </div>
+            </div>
+
+            <div style="margin: 15px 0 20px 0; padding: 10px 12px; background: rgba(220, 53, 69, 0.08); border: 1px solid rgba(220, 53, 69, 0.25); border-radius: 6px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; line-height: 1.4; color: var(--text-main); font-weight: 500; margin: 0;">
+                    <input type="checkbox" id="bulk-delete-confirm-checkbox" onchange="onBulkDeleteCheckboxChange()" style="margin-top: 2px; cursor: pointer; width: 16px; height: 16px; accent-color: var(--danger);">
+                    <span>I understand that these students will be removed from the active student list.</span>
+                </label>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="closeBulkDeleteModal()" style="padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; font-size: 13px; font-weight: 500;">Cancel</button>
+                <button type="button" id="btn-confirm-bulk-delete" onclick="executeBulkDelete()" disabled style="padding: 8px 18px; border-radius: 4px; border: none; background: var(--danger); color: white; cursor: not-allowed; opacity: 0.5; font-size: 13px; font-weight: 500;">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- jsPDF and AutoTable for PDF Generation (bundled locally — the app must work offline) -->
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/jspdf.plugin.autotable.min.js"></script>
 
-    <script src="js/sidebar.js?v=7"></script>
-    <script src="js/students.js?v=14"></script>
+    <script src="js/sidebar.js?v=10"></script>
+    <script src="js/students.js?v=15"></script>
 </body>
 
 </html>

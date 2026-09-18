@@ -28,8 +28,8 @@ class Student(Base):
     standard = Column(String, default="11th")
     is_active = Column(Boolean, default=True)
 
-    # Relationship to attendance logs (cascade ensures records are cleaned up when student is deleted)
-    attendances = relationship("Attendance", back_populates="student", cascade="all, delete-orphan")
+    # Relationship to attendance logs (historical records are preserved when student is removed)
+    attendances = relationship("Attendance", back_populates="student")
 
 class Attendance(Base):
     __tablename__ = "attendance"
