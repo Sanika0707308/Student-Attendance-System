@@ -104,6 +104,14 @@ window.populateStandardSelects = async function (root = document) {
         delete select.dataset.selected;
         select.dispatchEvent(new Event("standards-loaded"));
     });
+
+    if (typeof window.updateMoveToOptions === "function") {
+        try {
+            window.updateMoveToOptions();
+        } catch (e) {
+            console.error("Error invoking updateMoveToOptions:", e);
+        }
+    }
 };
 
 class Sidebar extends HTMLElement {

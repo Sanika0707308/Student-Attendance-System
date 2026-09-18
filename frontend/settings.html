@@ -197,7 +197,8 @@
                                 <div style="flex:1; min-width: 120px;">
                                     <label class="tool-label" for="move-from" data-i18n="classTools.moveFrom">From</label>
                                     <select id="move-from" class="input-field" data-standards="one"
-                                        data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
+                                        data-placeholder-key="classTools.selectClass" data-placeholder="Select class"
+                                        onchange="window.updateMoveToOptions()"></select>
                                 </div>
                                 <div style="flex:1; min-width: 120px;">
                                     <label class="tool-label" for="move-to" data-i18n="classTools.moveTo">To</label>
@@ -600,8 +601,8 @@
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=7"></script>
-    <script src="js/settings.js?v=7"></script>
+    <script src="js/sidebar.js?v=8"></script>
+    <script src="js/settings.js?v=8"></script>
 </body>
 
 </html>

@@ -45,7 +45,7 @@ const STATUS_FIELDS = {
     "Left": { phrase: "msg_left", template: "tpl_left" },
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+function initSettingsPage() {
     loadSettings();
     loadHolidays();
     wireStandardsEditor();
@@ -53,7 +53,13 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPlaceholderReference();
     wireClassTools();
     loadClassCounts();
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSettingsPage);
+} else {
+    initSettingsPage();
+}
 
 async function loadSettings() {
     try {
@@ -912,6 +918,7 @@ function wireClassTools() {
 
     if (moveFrom) {
         moveFrom.addEventListener("change", updateMoveToOptions);
+        moveFrom.addEventListener("input", updateMoveToOptions);
         moveFrom.addEventListener("standards-loaded", updateMoveToOptions);
     }
 
@@ -929,14 +936,15 @@ function wireClassTools() {
             closeDeleteClassModal();
         }
     });
+
+    // Run initial update for Move Class options
+    updateMoveToOptions();
 }
 
 async function updateMoveToOptions() {
     const moveFrom = document.getElementById("move-from");
     const moveTo = document.getElementById("move-to");
     if (!moveFrom || !moveTo) return;
-
-    const fromVal = (moveFrom.value || "").trim();
 
     // Dynamically retrieve standards from memory, cached settings, or window.getStandards()
     let standards = (_standards && _standards.length) ? [..._standards] : [];
@@ -951,28 +959,72 @@ async function updateMoveToOptions() {
         standards = Array.from(moveFrom.options).map(o => o.value).filter(Boolean);
     }
 
+    // If moveFrom has no class options yet, but standards are resolved, populate moveFrom
+    const validFromOptions = Array.from(moveFrom.options).filter(o => Boolean(o.value));
+    if (validFromOptions.length === 0 && standards.length > 0) {
+        const placeholder = typeof window.tr === "function"
+            ? window.tr("classTools.selectClass", "Select class")
+            : "Select class";
+        let fromHtml = `<option value="" disabled selected>${placeholder}</option>`;
+        standards.forEach(s => {
+            fromHtml += `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`;
+        });
+        moveFrom.innerHTML = fromHtml;
+    }
+
+    const fromVal = (moveFrom.value || "").trim();
+
     if (!fromVal) {
-        moveTo.innerHTML = `<option value="" disabled selected>Select source class first</option>`;
+        const msg = typeof window.tr === "function"
+            ? window.tr("classTools.selectFromFirst", "Select source class first")
+            : "Select source class first";
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
         moveTo.disabled = true;
         return;
     }
 
-    // Destination classes: all available classes except the chosen From class
-    const destinationClasses = standards.filter(s => s !== fromVal);
+    // Destination classes: all available classes except the chosen From class (case-insensitive trim match)
+    const destinationClasses = standards.filter(s => s && s.trim().toLowerCase() !== fromVal.toLowerCase());
 
     if (destinationClasses.length === 0) {
-        moveTo.innerHTML = `<option value="" disabled selected>No other classes available</option>`;
+        const msg = typeof window.tr === "function"
+            ? window.tr("classTools.noOtherClasses", "No other classes available")
+            : "No other classes available";
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
         moveTo.disabled = true;
         return;
     }
 
     moveTo.disabled = false;
-    let html = `<option value="" disabled selected>Select destination class</option>`;
+
+    // Determine default selected destination:
+    // 1. Preserve current selection if it's already one of the valid destination classes
+    // 2. Otherwise prefer the next sequential class in the standards sequence
+    // 3. Fallback to the first valid destination class
+    const prevToVal = (moveTo.value || "").trim();
+    let selectedDest = "";
+
+    if (prevToVal && destinationClasses.includes(prevToVal)) {
+        selectedDest = prevToVal;
+    } else {
+        const fromIdx = standards.findIndex(s => s && s.trim().toLowerCase() === fromVal.toLowerCase());
+        if (fromIdx !== -1 && fromIdx + 1 < standards.length && destinationClasses.includes(standards[fromIdx + 1])) {
+            selectedDest = standards[fromIdx + 1];
+        } else {
+            selectedDest = destinationClasses[0];
+        }
+    }
+
+    let html = "";
     destinationClasses.forEach(dest => {
-        html += `<option value="${escapeAttr(dest)}">${escapeHtml(dest)}</option>`;
+        const isSel = (dest === selectedDest) ? " selected" : "";
+        html += `<option value="${escapeAttr(dest)}"${isSel}>${escapeHtml(dest)}</option>`;
     });
     moveTo.innerHTML = html;
+    moveTo.value = selectedDest;
 }
+
+window.updateMoveToOptions = updateMoveToOptions;
 
 async function loadClassCounts(announce = false) {
     const box = document.getElementById("class-counts");
