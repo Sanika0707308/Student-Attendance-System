@@ -414,13 +414,24 @@ function updateBulkSelectionUI() {
     const checkedCount = visibleCbs.filter(cb => cb.checked).length;
     const totalVisible = visibleCbs.length;
 
+    const isSelectionMode = checkedCount > 0;
+
+    const bulkBar = document.getElementById("bulk-actions-bar");
+    if (bulkBar) {
+        bulkBar.style.display = isSelectionMode ? "flex" : "none";
+    }
+
+    const tableSelectAllCb = document.getElementById("table-select-all");
+    if (tableSelectAllCb) {
+        tableSelectAllCb.style.visibility = isSelectionMode ? "visible" : "hidden";
+    }
+
     const countLabel = document.getElementById("selected-students-count");
     if (countLabel) {
         countLabel.textContent = `(${checkedCount} selected)`;
     }
 
     const selectAllCb = document.getElementById("select-all-checkbox");
-    const tableSelectAllCb = document.getElementById("table-select-all");
     const isAllChecked = totalVisible > 0 && checkedCount === totalVisible;
     const isIndeterminate = checkedCount > 0 && checkedCount < totalVisible;
 
@@ -446,16 +457,6 @@ function onStudentCheckboxChange() {
 }
 
 function toggleSelectAll(checked) {
-    const currentStd = getSelectedStandard();
-    if (currentStd === "All") {
-        window.showToast("Please select a specific standard/class first to use bulk selection.", "warning");
-        const selectAllCb = document.getElementById("select-all-checkbox");
-        const tableSelectAllCb = document.getElementById("table-select-all");
-        if (selectAllCb) selectAllCb.checked = false;
-        if (tableSelectAllCb) tableSelectAllCb.checked = false;
-        return;
-    }
-
     const visibleCbs = getVisibleStudentCheckboxes();
     visibleCbs.forEach(cb => {
         cb.checked = !!checked;
@@ -506,8 +507,10 @@ async function loadStudents() {
                 const tr_ = document.createElement("tr");
                 tr_.dataset.name = s.name || "";
                 tr_.dataset.zkid = String(s.zk_id != null ? s.zk_id : "");
+                tr_.dataset.standard = s.standard || "";
                 tr_.setAttribute('data-name', s.name || '');
                 tr_.setAttribute('data-zkid', String(s.zk_id != null ? s.zk_id : ''));
+                tr_.setAttribute('data-standard', s.standard || '');
 
                 tr_.innerHTML = `
                     <td style="text-align: center;">
@@ -642,11 +645,6 @@ async function executeDeleteStudent() {
 
 function openBulkDeleteModal() {
     const currentStd = getSelectedStandard();
-    if (currentStd === "All") {
-        window.showToast("Please select a specific standard/class first.", "warning");
-        return;
-    }
-
     const visibleCbs = getVisibleStudentCheckboxes();
     const selectedIds = visibleCbs.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id, 10));
 
@@ -659,7 +657,7 @@ function openBulkDeleteModal() {
     if (!modal) return;
 
     document.getElementById("bulk-delete-count").textContent = selectedIds.length;
-    document.getElementById("bulk-delete-standard").textContent = currentStd;
+    document.getElementById("bulk-delete-standard").textContent = (currentStd === "All" ? "all classes" : currentStd);
 
     const cb = document.getElementById("bulk-delete-confirm-checkbox");
     if (cb) cb.checked = false;
@@ -809,9 +807,9 @@ function filterStudents() {
         if (tds.length < 5) continue;
 
         studentRowsExist = true;
-        const rawName = row.dataset.name !== undefined ? row.dataset.name : (row.getAttribute("data-name") || tds[1].textContent || tds[1].innerText || "");
-        const rawZk = row.dataset.zkid !== undefined ? row.dataset.zkid : (row.getAttribute("data-zkid") || tds[3].textContent || tds[3].innerText || "");
-        const rawStd = tds[2].textContent || tds[2].innerText || "";
+        const rawName = row.dataset.name !== undefined ? row.dataset.name : (row.getAttribute("data-name") || tds[2]?.textContent || tds[2]?.innerText || "");
+        const rawZk = row.dataset.zkid !== undefined ? row.dataset.zkid : (row.getAttribute("data-zkid") || tds[4]?.textContent || tds[4]?.innerText || "");
+        const rawStd = row.dataset.standard !== undefined ? row.dataset.standard : (row.getAttribute("data-standard") || tds[3]?.textContent || tds[3]?.innerText || "");
 
         const nameText = rawName.trim().toLowerCase();
         const zkIdText = rawZk.trim().toLowerCase();
@@ -829,6 +827,10 @@ function filterStudents() {
             visibleCount++;
         } else {
             row.style.display = "none";
+            const rowCb = row.querySelector(".student-select-cb");
+            if (rowCb && rowCb.checked) {
+                rowCb.checked = false;
+            }
         }
     }
 

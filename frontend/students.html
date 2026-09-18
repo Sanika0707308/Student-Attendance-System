@@ -108,7 +108,7 @@
             </div>
 
             <!-- Bulk Student Selection Controls -->
-            <div id="bulk-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; flex-wrap: wrap; gap: 10px;">
+            <div id="bulk-actions-bar" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px 14px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; font-size: 14px; margin: 0; user-select: none;">
                         <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary);">
@@ -127,7 +127,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 38px; text-align: center;"><input type="checkbox" id="table-select-all" onchange="toggleSelectAll(this.checked)" title="Select All" style="cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px;"></th>
+                        <th style="width: 38px; text-align: center;"><input type="checkbox" id="table-select-all" onchange="toggleSelectAll(this.checked)" title="Select All" style="visibility: hidden; cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px;"></th>
                         <th data-i18n="common.id">ID</th>
                         <th data-i18n="common.name">Name</th>
                         <th data-i18n="common.standard">Standard</th>
@@ -280,8 +280,8 @@
     <script src="js/jspdf.umd.min.js"></script>
     <script src="js/jspdf.plugin.autotable.min.js"></script>
 
-    <script src="js/sidebar.js?v=10"></script>
-    <script src="js/students.js?v=15"></script>
+    <script src="js/sidebar.js?v=11"></script>
+    <script src="js/students.js?v=16"></script>
 </body>
 
 </html>
