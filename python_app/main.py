@@ -267,7 +267,12 @@ if __name__ == "__main__":
         )
         js_api._window = window
         window.events.closed += on_closed
-        webview.start()
+
+        app_icon = os.path.join(STATIC_DIR, "favicon.ico")
+        if not os.path.isfile(app_icon):
+            app_icon = os.path.join(FRONTEND_DIR, "favicon.ico")
+
+        webview.start(icon=app_icon if os.path.isfile(app_icon) else None)
     except (ImportError, Exception) as e:
         print(f"Native window failed to initialize: {e}")
         print("Falling back to default Web Browser...")

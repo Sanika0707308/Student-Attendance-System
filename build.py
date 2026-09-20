@@ -73,6 +73,7 @@ if __name__ == '__main__':
         'crypto_utils',
         'database',
         'email_service',
+        'email_validation',
         'message_templates',
         'reports_service',
         'time_bound_service',
@@ -94,9 +95,11 @@ if __name__ == '__main__':
     for inc in hidden_imports:
         hidden_imports_args.extend(['--hidden-import', inc])
 
+    app_icon = os.path.join(frontend_src, 'favicon.ico')
+
     # ── Step 1: Build the .exe with PyInstaller ──────────────────────────────
     print("\n[Step 1/3] Building EXE with PyInstaller...")
-    PyInstaller.__main__.run([
+    pyinstaller_args = [
         backend_main,
         '--name=InstituteAttendance',
         f'--paths={python_app_src}',
@@ -105,7 +108,11 @@ if __name__ == '__main__':
         f'--add-data={frontend_data}',
         f'--add-binary={biometric_dll};.',
         '--clean'
-    ] + hidden_imports_args)
+    ]
+    if os.path.isfile(app_icon):
+        pyinstaller_args.append(f'--icon={app_icon}')
+
+    PyInstaller.__main__.run(pyinstaller_args + hidden_imports_args)
 
     exe_path = os.path.join('dist', 'InstituteAttendance.exe')
     if not os.path.isfile(exe_path):

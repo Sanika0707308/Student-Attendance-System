@@ -469,7 +469,21 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
         tr("set.confirmSaveAgain", "Please confirm again to save the settings."))) return;
 
     const zk_ip_address = document.getElementById('zk_ip_address').value;
-    const smtp_email = document.getElementById('smtp_email').value;
+    const raw_smtp_email = document.getElementById('smtp_email').value;
+    let smtp_email = (raw_smtp_email || '').trim();
+
+    if (smtp_email) {
+        if (typeof window.validateEmailAddress === "function") {
+            const check = window.validateEmailAddress(smtp_email);
+            if (!check.valid) {
+                window.showToast(check.error, "error");
+                document.getElementById('smtp_email').focus();
+                return;
+            }
+            smtp_email = check.email;
+        }
+    }
+
     const smtp_password = document.getElementById('smtp_password').value;
     const in_time = document.getElementById('in_time').value;
     const mid_time = document.getElementById('mid_time').value;

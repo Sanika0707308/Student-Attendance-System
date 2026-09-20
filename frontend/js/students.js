@@ -28,20 +28,17 @@ function displayStatus(status) {
 }
 
 function validateParentEmail(email) {
-    if (!email || typeof email !== "string") {
+    if (typeof window.validateEmailAddress === "function") {
+        const result = window.validateEmailAddress(email);
+        if (!result.valid) {
+            return { valid: false, error: result.error };
+        }
+        return { valid: true, email: result.email };
+    }
+    if (!email || typeof email !== "string" || !email.trim()) {
         return { valid: false, error: tr("students.emailRequired", "Parent email is required.") };
     }
-    const trimmed = email.trim();
-    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
-    if (!pattern.test(trimmed)) {
-        return { valid: false, error: tr("students.emailFormatError", "Invalid email address format. Example: abc@gmail.com") };
-    }
-    const domain = trimmed.split('@')[1].toLowerCase();
-    const typoDomains = ["gamail.com", "gamil.com", "gmai.com", "gmal.com", "gmaill.com", "yaho.com", "yaho.co.in", "hotmial.com", "outlok.com"];
-    if (typoDomains.includes(domain)) {
-        return { valid: false, error: trf("students.emailTypoDomain", { domain }, `Invalid email domain "${domain}". Please check for typos (e.g. gmail.com).`) };
-    }
-    return { valid: true, email: trimmed.toLowerCase() };
+    return { valid: true, email: email.trim().toLowerCase() };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -54,15 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === document.getElementById("edit-student-modal")) closeEditStudentModal();
         if (e.target === document.getElementById("attendance-modal")) closeAttendanceModal();
     });
-
-    // Auto-fill gmail.com helper (only triggers on blur, not every keystroke)
-    const autoFillGmail = function() {
-        if (this.value.endsWith("@")) {
-            this.value += "gmail.com";
-        }
-    };
-    document.getElementById("parent_email").addEventListener("change", autoFillGmail);
-    document.getElementById("edit_parent_email").addEventListener("change", autoFillGmail);
 
     document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
         e.preventDefault();

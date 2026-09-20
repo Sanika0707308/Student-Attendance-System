@@ -6,14 +6,9 @@ from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 from database import get_db, Student, Attendance, SystemSettings, get_configured_standards
+from email_validation import validate_email_address
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
-
-TYPO_DOMAINS = {
-    "gamail.com", "gamil.com", "gmai.com", "gmal.com", "gmaill.com",
-    "yaho.com", "yaho.co.in", "hotmial.com", "outlok.com"
-}
-EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$')
 
 # Pydantic models for validation
 class StudentCreate(BaseModel):
@@ -41,15 +36,10 @@ class StudentCreate(BaseModel):
     @field_validator('parent_email')
     @classmethod
     def validate_email(cls, v: str) -> str:
-        cleaned = (v or "").strip()
-        if not cleaned:
-            raise ValueError('Parent email is required')
-        if not EMAIL_REGEX.match(cleaned):
-            raise ValueError('Invalid email address format. Use format: name@domain.com')
-        domain = cleaned.split("@")[1].lower()
-        if domain in TYPO_DOMAINS:
-            raise ValueError(f"Invalid email domain '{domain}'. Please check for typos (e.g. gmail.com).")
-        return cleaned.lower()
+        is_valid, cleaned, error = validate_email_address(v)
+        if not is_valid:
+            raise ValueError(error)
+        return cleaned
 
 class StudentRead(BaseModel):
     id: int
