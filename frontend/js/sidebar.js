@@ -104,6 +104,14 @@ window.populateStandardSelects = async function (root = document) {
         delete select.dataset.selected;
         select.dispatchEvent(new Event("standards-loaded"));
     });
+
+    if (typeof window.updateMoveToOptions === "function") {
+        try {
+            window.updateMoveToOptions();
+        } catch (e) {
+            console.error("Error invoking updateMoveToOptions:", e);
+        }
+    }
 };
 
 class Sidebar extends HTMLElement {
@@ -140,33 +148,11 @@ class Sidebar extends HTMLElement {
                 <a href="attendance.html" class="${currentPage === 'attendance.html' ? 'active' : ''}">📝 ${tr("nav.attendance", "Attendance")}</a>
                 <a href="reports.html" class="${currentPage === 'reports.html' ? 'active' : ''}">📊 ${tr("nav.reports", "Reports")}</a>
                 <a href="settings.html" class="${currentPage === 'settings.html' ? 'active' : ''}">⚙️ ${tr("nav.settings", "Settings")}</a>
-                <a href="#" id="lang-toggle" style="margin-top: auto;">🌐 ${otherLangLabel}</a>
-                <a href="#" id="theme-toggle">${themeLabel}</a>
-                <a href="#" onclick="logout(event)">🚪 ${tr("nav.logout", "Logout")}</a>
             </nav>
         </div>
         `;
 
-        const langToggle = this.querySelector('#lang-toggle');
-        if (langToggle) {
-            langToggle.addEventListener('click', (event) => {
-                event.preventDefault();
-                const current = typeof window.getLang === "function" ? window.getLang() : "en";
-                window.setLang(current === "mr" ? "en" : "mr");   // reloads the page
-            });
-        }
-
-        const themeToggle = this.querySelector('#theme-toggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', (event) => {
-                event.preventDefault();
-                const next = window.getTheme() === "dark" ? "light" : "dark";
-                window.applyTheme(next);
-                themeToggle.textContent = next === "dark"
-                    ? "☀️ " + tr("nav.lightMode", "Light Mode")
-                    : "🌙 " + tr("nav.darkMode", "Dark Mode");
-            });
-        }
+        initTopBarUtilities();
 
         // Inject global toast container if it doesn't exist
         if (!document.getElementById('toast-container')) {
@@ -213,6 +199,56 @@ class Sidebar extends HTMLElement {
         setInterval(checkStatus, 15000);
     }
 }
+
+function initTopBarUtilities() {
+    const container = document.querySelector('.top-bar-right');
+    if (!container) return;
+
+    const isDark = window.getTheme() === "dark";
+    const themeIcon = isDark ? "☀️" : "🌙";
+    const themeLabel = isDark ? tr("nav.lightMode", "Light Mode") : tr("nav.darkMode", "Dark Mode");
+    const otherLangLabel = tr("nav.language", "मराठी");
+    const logoutLabel = tr("nav.logout", "Logout");
+
+    container.innerHTML = `
+        <button type="button" class="top-bar-btn" id="lang-toggle" title="Switch Language">
+            <span>🌐</span> <span id="lang-toggle-label">${otherLangLabel}</span>
+        </button>
+        <button type="button" class="top-bar-btn" id="theme-toggle" title="Toggle Theme">
+            <span id="theme-toggle-icon">${themeIcon}</span> <span id="theme-toggle-label">${themeLabel}</span>
+        </button>
+        <button type="button" class="top-bar-btn logout-btn" id="logout-btn" onclick="logout(event)" title="${logoutLabel}">
+            <span>🚪</span> <span>${logoutLabel}</span>
+        </button>
+    `;
+
+    const langToggle = container.querySelector('#lang-toggle');
+    if (langToggle) {
+        langToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            const current = typeof window.getLang === "function" ? window.getLang() : "en";
+            window.setLang(current === "mr" ? "en" : "mr");
+        });
+    }
+
+    const themeToggle = container.querySelector('#theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            const next = window.getTheme() === "dark" ? "light" : "dark";
+            window.applyTheme(next);
+            const iconSpan = document.getElementById("theme-toggle-icon");
+            const labelSpan = document.getElementById("theme-toggle-label");
+            if (iconSpan) iconSpan.textContent = next === "dark" ? "☀️" : "🌙";
+            if (labelSpan) labelSpan.textContent = next === "dark"
+                ? tr("nav.lightMode", "Light Mode")
+                : tr("nav.darkMode", "Dark Mode");
+        });
+    }
+}
+
+window.initTopBarUtilities = initTopBarUtilities;
+document.addEventListener("DOMContentLoaded", initTopBarUtilities);
 
 customElements.define('app-sidebar', Sidebar);
 

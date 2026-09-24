@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List
 
 from database import get_db, SystemSettings, get_configured_standards, DEFAULT_STANDARDS
 from crypto_utils import encrypt_password, decrypt_password
+from email_validation import validate_email_address
 from message_templates import (
     DEFAULT_STATUS_WORDS,
     DEFAULT_SUBJECT,
@@ -30,6 +31,17 @@ class SettingsUpdate(BaseModel):
     zk_ip_address: str
     smtp_email: str
     smtp_password: str
+
+    @field_validator('smtp_email')
+    @classmethod
+    def validate_smtp_email(cls, v: str) -> str:
+        trimmed = (v or "").strip()
+        if not trimmed:
+            return ""
+        is_valid, cleaned, error = validate_email_address(trimmed)
+        if not is_valid:
+            raise ValueError(error)
+        return cleaned
     in_time: str
     mid_time: str
     out_time: str

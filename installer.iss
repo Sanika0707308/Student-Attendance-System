@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Institute Attendance System"
-#define MyAppVersion "1.9"
+#define MyAppVersion "2.0"
 #define MyAppPublisher "Sanika"
 #define MyAppExeName "InstituteAttendance.exe"
 #define MyAppIcon "frontend\favicon.ico" 
@@ -17,7 +17,7 @@ DefaultDirName={pf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Output the setup file directly to root
 OutputDir=.\
-OutputBaseFilename=AttendanceSystem_Setup_v1.9
+OutputBaseFilename=AttendanceSystem_Setup_v2.0
 SetupIconFile={#MyAppIcon}
 Compression=lzma
 SolidCompression=yes
@@ -32,12 +32,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; IMPORTANT: Build the python executable using `python build.py` first so the /dist folder exists before compiling this script.
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-; Include the DLL if it is needed by the application
-Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion regserver
+; zkemkeeper.dll is a runtime dependency, not an ActiveX/COM server.
+; Do not use regserver: Inno would call regsvr32 and fail on a normal DLL.
+Source: "zkemkeeper.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

@@ -27,28 +27,43 @@ function displayStatus(status) {
     return typeof window.tStatus === "function" ? window.tStatus(status) : status;
 }
 
+function validateParentEmail(email) {
+    if (typeof window.validateEmailAddress === "function") {
+        const result = window.validateEmailAddress(email);
+        if (!result.valid) {
+            return { valid: false, error: result.error };
+        }
+        return { valid: true, email: result.email };
+    }
+    if (!email || typeof email !== "string" || !email.trim()) {
+        return { valid: false, error: tr("students.emailRequired", "Parent email is required.") };
+    }
+    return { valid: true, email: email.trim().toLowerCase() };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     loadStudents();
     wireRosterImportExport();
-    wireClassTools();
-    loadClassCounts();
 
-    // Auto-fill gmail.com helper (only triggers on blur, not every keystroke)
-    const autoFillGmail = function() {
-        if (this.value.endsWith("@")) {
-            this.value += "gmail.com";
-        }
-    };
-    document.getElementById("parent_email").addEventListener("change", autoFillGmail);
-    document.getElementById("edit_parent_email").addEventListener("change", autoFillGmail);
+    window.addEventListener("click", (e) => {
+        if (e.target === document.getElementById("delete-student-modal")) closeDeleteStudentModal();
+        if (e.target === document.getElementById("bulk-delete-modal")) closeBulkDeleteModal();
+        if (e.target === document.getElementById("edit-student-modal")) closeEditStudentModal();
+        if (e.target === document.getElementById("attendance-modal")) closeAttendanceModal();
+    });
 
     document.getElementById("addStudentForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const name = document.getElementById("student_name").value;
-        const zk_id = document.getElementById("zk_id").value;
-        const parent_email = document.getElementById("parent_email").value;
+        const name = (document.getElementById("student_name").value || "").trim();
+        const zk_id = (document.getElementById("zk_id").value || "").trim();
+        const rawEmail = document.getElementById("parent_email").value || "";
         const standard = document.getElementById("standard").value;
+
+        if (!name) {
+            window.showToast(tr("students.nameRequired", "Student name is required."), "error");
+            return;
+        }
 
         // Front-end numeric check for ZK ID
         if (!/^\d+$/.test(zk_id)) {
@@ -56,19 +71,32 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Email validation
+        const emailCheck = validateParentEmail(rawEmail);
+        if (!emailCheck.valid) {
+            window.showToast(emailCheck.error, "error");
+            return;
+        }
+        const parent_email = emailCheck.email;
+
         // Front-end duplicate checks
         const existingStudents = window.cachedStudents || [];
+        const normName = name.toLowerCase();
 
-        const nameCount = existingStudents.filter(s => s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
-        const emailCount = existingStudents.filter(s => s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
-
-        if (nameCount >= 2) {
-            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+        // 1. ZK ID must remain unique across all students
+        const duplicateZk = existingStudents.find(s => String(s.zk_id).trim() === zk_id);
+        if (duplicateZk) {
+            window.showToast(tr("students.zkAlreadyRegistered", "Student with this ZKTeco ID already registered."), "error");
             return;
         }
 
-        if (emailCount >= 2) {
-            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+        // 2. Do not allow two students to have the same Name + same Parent Email combination
+        const duplicateNameEmail = existingStudents.find(s =>
+            (s.name || "").trim().toLowerCase() === normName &&
+            (s.parent_email || "").trim().toLowerCase() === parent_email
+        );
+        if (duplicateNameEmail) {
+            window.showToast(tr("students.duplicateNameEmail", "A student with this Name and Parent Email already exists."), "error");
             return;
         }
 
@@ -83,7 +111,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.showToast(tr("students.added", "Student added successfully!"), "success");
                 document.getElementById("addStudentForm").reset();
                 loadStudents();
-                loadClassCounts();
             } else {
                 const data = await resp.json();
                 window.showToast(tr("students.failedPrefix", "Failed") + ": " +
@@ -99,10 +126,15 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
 
         const id = document.getElementById("edit_student_id").value;
-        const name = document.getElementById("edit_student_name").value;
-        const zk_id = document.getElementById("edit_zk_id").value;
-        const parent_email = document.getElementById("edit_parent_email").value;
+        const name = (document.getElementById("edit_student_name").value || "").trim();
+        const zk_id = (document.getElementById("edit_zk_id").value || "").trim();
+        const rawEmail = document.getElementById("edit_parent_email").value || "";
         const standard = document.getElementById("edit_standard").value;
+
+        if (!name) {
+            window.showToast(tr("students.nameRequired", "Student name is required."), "error");
+            return;
+        }
 
         // Front-end numeric check for ZK ID
         if (!/^\d+$/.test(zk_id)) {
@@ -110,19 +142,33 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Email validation
+        const emailCheck = validateParentEmail(rawEmail);
+        if (!emailCheck.valid) {
+            window.showToast(emailCheck.error, "error");
+            return;
+        }
+        const parent_email = emailCheck.email;
+
         // Front-end duplicate checks excluding the student being edited
         const existingStudents = window.cachedStudents || [];
+        const normName = name.toLowerCase();
 
-        const nameCount = existingStudents.filter(s => s.id != id && s.name.trim().toLowerCase() === name.trim().toLowerCase()).length;
-        const emailCount = existingStudents.filter(s => s.id != id && s.parent_email.trim().toLowerCase() === parent_email.trim().toLowerCase()).length;
-
-        if (nameCount >= 2) {
-            window.showToast(tr("students.nameTwice", "Cannot save. That name is already used twice."), "warning");
+        // 1. ZK ID must remain unique across all students
+        const duplicateZk = existingStudents.find(s => s.id != id && String(s.zk_id).trim() === zk_id);
+        if (duplicateZk) {
+            window.showToast(tr("students.zkAlreadyRegistered", "ZKTeco ID already in use."), "error");
             return;
         }
 
-        if (emailCount >= 2) {
-            window.showToast(tr("students.emailTwice", "Cannot save. That email is already used twice."), "warning");
+        // 2. Do not allow two students to have the same Name + same Parent Email combination
+        const duplicateNameEmail = existingStudents.find(s =>
+            s.id != id &&
+            (s.name || "").trim().toLowerCase() === normName &&
+            (s.parent_email || "").trim().toLowerCase() === parent_email
+        );
+        if (duplicateNameEmail) {
+            window.showToast(tr("students.duplicateNameEmail", "A student with this Name and Parent Email already exists."), "error");
             return;
         }
 
@@ -143,7 +189,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.showToast(tr("students.updated", "Student updated successfully!"), "success");
                 closeEditStudentModal();
                 loadStudents();
-                loadClassCounts();
             } else {
                 const data = await resp.json();
                 window.showToast(tr("students.failedPrefix", "Failed") + ": " +
@@ -327,335 +372,112 @@ function renderImportReport(report) {
     wrapper.style.display = "block";
 }
 
-// ── Class tools ──────────────────────────────────────────────────────────────
-// Promotion, class-to-class moves and clearing a finished batch. All three used
-// to be one-student-at-a-time jobs.
-
-function wireClassTools() {
-    const refresh = document.getElementById("btn-refresh-counts");
-    const preview = document.getElementById("btn-preview-promotion");
-    const move = document.getElementById("btn-move-class");
-    const clear = document.getElementById("btn-clear-class");
-    const graduateAction = document.getElementById("graduate-action");
-
-    if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
-    if (preview) preview.addEventListener("click", previewPromotion);
-    if (move) move.addEventListener("click", moveClass);
-    if (clear) clear.addEventListener("click", clearClass);
-
-    // Changing what happens to the final class rewrites the last line of the
-    // preview, so re-render it from the plan already fetched rather than making
-    // the admin press Preview again.
-    if (graduateAction) {
-        graduateAction.addEventListener("change", () => {
-            if (window.cachedPromotionPlan) renderPromotionPlan(window.cachedPromotionPlan);
-        });
-    }
-}
-
-async function loadClassCounts(announce = false) {
-    const box = document.getElementById("class-counts");
-    if (!box) return;
-
-    try {
-        const resp = await window.apiFetch('/api/students/by-standard');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        const rows = data.standards || [];
-        window.cachedClassCounts = rows;
-
-        if (rows.length === 0) {
-            box.innerHTML = `<span style="font-size:13px; color: var(--text-muted);">${tr("students.none", "No students enrolled.")}</span>`;
-            return;
-        }
-
-        box.innerHTML = rows.map(r => {
-            const archived = r.archived > 0
-                ? ` <span class="count-value" style="color: var(--text-muted);">+${r.archived}</span>`
-                : "";
-            const title = r.archived > 0
-                ? ` title="${escapeAttr(r.archived + " " + tr("students.archived", "Archived"))}"`
-                : "";
-            return `<span class="count-chip${r.archived > 0 && r.active === 0 ? ' archived' : ''}"${title}>` +
-                `<strong>${escapeHtml(r.standard)}</strong>` +
-                `<span class="count-value">${r.active}</span>${archived}</span>`;
-        }).join("");
-
-        if (announce) window.showToast(tr("classTools.countsRefreshed", "Class sizes updated."), "success");
-    } catch (e) {
-        console.error("Class counts failed", e);
-        box.innerHTML = `<span style="font-size:13px; color: var(--danger);">${tr("classTools.countsFailed", "Could not read the class sizes.")}</span>`;
-    }
-}
-
-/** Head count of one class, from the cached chips — used only in confirm text. */
-function cachedCountFor(standard, key = "active") {
-    const rows = window.cachedClassCounts || [];
-    const match = rows.find(r => r.standard === standard);
-    return match ? match[key] : 0;
-}
-
-async function previewPromotion() {
-    const box = document.getElementById("promotion-plan");
-    const button = document.getElementById("btn-preview-promotion");
-    if (!box) return;
-
-    box.style.display = "block";
-    box.innerHTML = `<span style="color: var(--text-muted);">${tr("classTools.loadingPlan", "Working out the plan…")}</span>`;
-    button.disabled = true;
-
-    try {
-        const resp = await window.apiFetch('/api/students/promotion-plan');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        window.cachedPromotionPlan = data;
-        renderPromotionPlan(data);
-    } catch (e) {
-        console.error("Promotion plan failed", e);
-        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.planFailed", "Could not build the promotion plan.")}</span>`;
-    } finally {
-        button.disabled = false;
-    }
-}
-
-function renderPromotionPlan(data) {
-    const box = document.getElementById("promotion-plan");
-    const plan = data.plan || [];
-
-    if (plan.length < 2) {
-        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.needTwoClasses", "Add at least two classes in Settings before promoting.")}</span>`;
-        return;
-    }
-
-    const action = document.getElementById("graduate-action").value || "archive";
-    const graduateConsequence = {
-        archive: tr("classTools.graduatingArchive", "will be archived (records kept)"),
-        delete: tr("classTools.graduatingDelete", "will be deleted permanently, with all attendance"),
-        keep: tr("classTools.graduatingKeep", "stay where they are")
-    }[action];
-
-    const items = plan.map(step => {
-        const count = step.students;
-        if (step.graduating) {
-            if (count === 0) {
-                return `<li class="plan-empty">${escapeHtml(step.from_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
-            }
-            return `<li class="plan-graduating">${escapeHtml(step.from_standard)} · ${count} ` +
-                `${tr("classTools.students", "students")} ${tr("classTools.willGraduate", "graduating")} — ${escapeHtml(graduateConsequence)}</li>`;
-        }
-        if (count === 0) {
-            return `<li class="plan-empty">${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
-        }
-        return `<li>${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} · ${count} ${tr("classTools.students", "students")}</li>`;
-    }).join("");
-
-    const nobody = (data.total_moving || 0) === 0 && (data.total_graduating || 0) === 0;
-
-    box.innerHTML = `
-        <h5>${tr("classTools.planTitle", "What will happen")}</h5>
-        <ul>${items}</ul>
-        ${nobody
-            ? `<span class="plan-empty">${tr("classTools.nothingToDo", "Nothing to promote — no students are enrolled.")}</span>`
-            : `<label class="tool-label" for="promote-confirm">${tr("classTools.typePromote", "Type PROMOTE to confirm")}</label>
-               <input type="text" id="promote-confirm" class="input-field" autocomplete="off" spellcheck="false">
-               <button type="button" class="btn btn-danger" id="btn-confirm-promotion" style="margin-top: 10px;">${tr("classTools.promoteConfirmBtn", "Promote All Classes")}</button>`}
-    `;
-
-    const confirmBtn = document.getElementById("btn-confirm-promotion");
-    if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
-}
-
-async function confirmPromotion() {
-    const input = document.getElementById("promote-confirm");
-    const button = document.getElementById("btn-confirm-promotion");
-    const typed = (input.value || "").trim();
-
-    // The phrase is checked here and again on the server. This copy only exists
-    // to keep a mis-click from becoming a round trip.
-    if (typed !== "PROMOTE") {
-        window.showToast(tr("classTools.promoteConfirm", "Type PROMOTE (in capitals) to run this promotion."), "warning");
-        input.focus();
-        return;
-    }
-
-    if (!window.confirmTwice(
-        tr("classTools.promoteConfirmAgain", "The promotion plan is ready. Do you want to continue?"),
-        tr("classTools.promoteFinalConfirm", "Please confirm again to promote all classes."))) return;
-
-    const action = document.getElementById("graduate-action").value || "archive";
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/promote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ graduate_action: action, confirm: "PROMOTE" })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.promoteFailed", "Could not run the promotion."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        let message = trf("classTools.promoted", { moved: result.promoted },
-            `Promotion complete. ${result.promoted} students moved.`);
-        if (result.graduate_action === "archive" && result.graduated > 0) {
-            message += " " + trf("classTools.promotedArchived", { n: result.graduated }, `${result.graduated} archived.`);
-        } else if (result.graduate_action === "delete" && result.graduated > 0) {
-            message += " " + trf("classTools.promotedDeleted", { n: result.graduated }, `${result.graduated} deleted.`);
-        }
-        window.showToast(message, "success");
-
-        // The plan is spent: its head counts describe a roster that no longer
-        // exists, and leaving the confirm box on screen invites a second run.
-        window.cachedPromotionPlan = null;
-        document.getElementById("promotion-plan").style.display = "none";
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Promotion failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
-}
-
-async function moveClass() {
-    const from = document.getElementById("move-from").value;
-    const to = document.getElementById("move-to").value;
-    const button = document.getElementById("btn-move-class");
-
-    if (!from || !to) {
-        window.showToast(tr("classTools.moveNeedBoth", "Choose both a source and a destination class."), "warning");
-        return;
-    }
-    if (from === to) {
-        window.showToast(tr("classTools.moveSame", "Those are the same class — nothing to move."), "warning");
-        return;
-    }
-
-    const count = cachedCountFor(from);
-    if (count === 0) {
-        window.showToast(trf("classTools.moveNobody", { from },
-            `There are no active students in ${from}.`), "warning");
-        return;
-    }
-
-    if (!window.confirmTwice(
-        trf("classTools.moveConfirm", { n: count, from, to },
-            `Move ${count} students from ${from} to ${to}?`),
-        tr("classTools.moveConfirmAgain", "Please confirm again to move these students."))) return;
-
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/change-standard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from_standard: from, to_standard: to })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.moveFailed", "Could not move that class."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        window.showToast(trf("classTools.moved", { n: result.moved, to },
-            `Moved ${result.moved} students to ${to}.`), "success");
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Class move failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
-}
-
-async function clearClass() {
-    const select = document.getElementById("clear-class");
-    const confirmInput = document.getElementById("clear-confirm");
-    const button = document.getElementById("btn-clear-class");
-    const cls = select.value;
-
-    if (!cls) {
-        window.showToast(tr("classTools.clearNeedClass", "Choose the class you want to clear."), "warning");
-        return;
-    }
-    // The typed name is what the server checks too. Asking for it here keeps a
-    // stray click on a red button from deleting a class.
-    if ((confirmInput.value || "").trim() !== cls) {
-        window.showToast(tr("classTools.clearMismatch", "Type the class name exactly as shown to confirm."), "warning");
-        confirmInput.focus();
-        return;
-    }
-
-    const total = cachedCountFor(cls, "total");
-    if (total === 0) {
-        window.showToast(trf("classTools.clearNobody", { cls }, `There are no students in ${cls}.`), "warning");
-        return;
-    }
-
-    if (!window.confirmTwice(
-        trf("classTools.clearConfirm", { n: total, cls },
-            `Permanently delete ${total} students in ${cls}, along with every attendance record they have?\n\nThis cannot be undone.`),
-        tr("classTools.clearConfirmAgain", "Please confirm again to permanently delete this class."))) return;
-
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = tr("students.building", "Building…");
-
-    try {
-        const resp = await window.apiFetch('/api/students/bulk-delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ standard: cls, confirm: cls, include_archived: true })
-        });
-
-        if (!resp.ok) {
-            const detail = await resp.json().then(d => d.detail).catch(() => null);
-            window.showToast(window.describeApiError(detail) ||
-                tr("classTools.clearFailed", "Could not clear that class."), "error");
-            return;
-        }
-
-        const result = await resp.json();
-        window.showToast(trf("classTools.cleared",
-            { students: result.students_deleted, records: result.attendance_deleted },
-            `Deleted ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`), "success");
-        confirmInput.value = "";
-        loadStudents();
-        loadClassCounts();
-    } catch (e) {
-        console.error("Class clear failed", e);
-        window.showToast(tr("students.serverUnreachable", "Could not reach the server."), "error");
-    } finally {
-        button.disabled = false;
-        button.textContent = original;
-    }
-}
-
 // ── Roster ───────────────────────────────────────────────────────────────────
 
-async function loadStudents() {
-    const showArchived = document.getElementById("show-archived");
-    const includeArchived = !!(showArchived && showArchived.checked);
+function getSelectedStandard() {
+    const raw = (document.getElementById("filter-standard")?.value || "All").trim();
+    const lower = raw.toLowerCase();
+    if (!raw || lower === "all" || lower === "all standards" || raw === "सर्व") {
+        return "All";
+    }
+    return raw;
+}
 
+function getVisibleStudentCheckboxes() {
+    const tbody = document.getElementById("student-table-body");
+    if (!tbody) return [];
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const checkboxes = [];
+    rows.forEach(r => {
+        if (r.id === "no-matching-students-row") return;
+        if (r.style.display === "none") return;
+        const cb = r.querySelector(".student-select-cb");
+        if (cb) checkboxes.push(cb);
+    });
+    return checkboxes;
+}
+
+function updateBulkSelectionUI() {
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const checkedCount = visibleCbs.filter(cb => cb.checked).length;
+    const totalVisible = visibleCbs.length;
+
+    const isSelectionMode = checkedCount > 0;
+
+    const bulkBar = document.getElementById("bulk-actions-bar");
+    if (bulkBar) {
+        bulkBar.style.display = isSelectionMode ? "flex" : "none";
+    }
+
+    const tableSelectAllCb = document.getElementById("table-select-all");
+    if (tableSelectAllCb) {
+        tableSelectAllCb.style.visibility = isSelectionMode ? "visible" : "hidden";
+    }
+
+    const countLabel = document.getElementById("selected-students-count");
+    if (countLabel) {
+        countLabel.textContent = `(${checkedCount} selected)`;
+    }
+
+    const selectAllCb = document.getElementById("select-all-checkbox");
+    const isAllChecked = totalVisible > 0 && checkedCount === totalVisible;
+    const isIndeterminate = checkedCount > 0 && checkedCount < totalVisible;
+
+    if (selectAllCb) {
+        selectAllCb.checked = isAllChecked;
+        selectAllCb.indeterminate = isIndeterminate;
+    }
+    if (tableSelectAllCb) {
+        tableSelectAllCb.checked = isAllChecked;
+        tableSelectAllCb.indeterminate = isIndeterminate;
+    }
+
+    const btnDeleteSelected = document.getElementById("btn-delete-selected");
+    if (btnDeleteSelected) {
+        btnDeleteSelected.disabled = checkedCount === 0;
+        btnDeleteSelected.style.opacity = checkedCount > 0 ? "1" : "0.5";
+        btnDeleteSelected.style.cursor = checkedCount > 0 ? "pointer" : "not-allowed";
+    }
+}
+
+function onStudentCheckboxChange() {
+    updateBulkSelectionUI();
+}
+
+function toggleSelectAll(checked) {
+    const visibleCbs = getVisibleStudentCheckboxes();
+    visibleCbs.forEach(cb => {
+        cb.checked = !!checked;
+    });
+    updateBulkSelectionUI();
+}
+
+function onStandardFilterChange() {
+    // When changing standard filter, clear selections to avoid cross-standard accidental delete
+    const allCbs = document.querySelectorAll(".student-select-cb");
+    allCbs.forEach(cb => cb.checked = false);
+    const selectAllCb = document.getElementById("select-all-checkbox");
+    const tableSelectAllCb = document.getElementById("table-select-all");
+    if (selectAllCb) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    }
+    if (tableSelectAllCb) {
+        tableSelectAllCb.checked = false;
+        tableSelectAllCb.indeterminate = false;
+    }
+
+    filterStudents();
+    updateBulkSelectionUI();
+}
+
+window.toggleSelectAll = toggleSelectAll;
+window.onStudentCheckboxChange = onStudentCheckboxChange;
+window.onStandardFilterChange = onStandardFilterChange;
+
+async function loadStudents() {
     try {
-        const resp = await window.apiFetch(
-            `/api/students${includeArchived ? '?include_archived=true' : ''}`);
+        const resp = await window.apiFetch('/api/students');
         const students = await resp.json();
         window.cachedStudents = students;
 
@@ -663,41 +485,39 @@ async function loadStudents() {
         tbody.innerHTML = "";
 
         if (students.length === 0) {
-            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--text-muted);'>${tr("students.none", "No students enrolled.")}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color: var(--text-muted);'>No students enrolled.</td></tr>`;
         } else {
-            const attendanceLabel = tr("students.attendanceBtn", "Attendance");
-            const editLabel = tr("students.editBtn", "Edit");
-            const deleteLabel = tr("students.deleteBtn", "Delete");
-            const restoreLabel = tr("students.restore", "Restore");
-            const archivedLabel = tr("students.archived", "Archived");
+            const attendanceLabel = "Attendance";
+            const editLabel = "Edit";
+            const deleteLabel = "Delete";
 
             students.forEach(s => {
-                const archived = s.is_active === false;
                 const tr_ = document.createElement("tr");
-                if (archived) tr_.className = "is-archived";
-
-                // The archived badge goes in the name cell, not the standard
-                // cell — filterStudents() compares that one against the class
-                // filter as exact text.
-                const restoreBtn = archived
-                    ? `<button class="btn-restore-student" data-id="${s.id}" style="background-color: var(--success); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(restoreLabel)}</button>`
-                    : "";
+                tr_.dataset.name = s.name || "";
+                tr_.dataset.zkid = String(s.zk_id != null ? s.zk_id : "");
+                tr_.dataset.standard = s.standard || "";
+                tr_.setAttribute('data-name', s.name || '');
+                tr_.setAttribute('data-zkid', String(s.zk_id != null ? s.zk_id : ''));
+                tr_.setAttribute('data-standard', s.standard || '');
 
                 tr_.innerHTML = `
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="student-select-cb" data-id="${s.id}" data-standard="${escapeAttr(s.standard || '')}" data-name="${escapeAttr(s.name || '')}" style="cursor: pointer; accent-color: var(--primary); width: 16px; height: 16px;">
+                    </td>
                     <td>${escapeHtml(String(s.id))}</td>
-                    <td>${escapeHtml(s.name)}${archived ? `<span class="archived-badge">${escapeHtml(archivedLabel)}</span>` : ""}</td>
+                    <td>${escapeHtml(s.name)}</td>
                     <td>${escapeHtml(s.standard || '')}</td>
                     <td>${escapeHtml(s.zk_id)}</td>
                     <td>${escapeHtml(s.parent_email)}</td>
                     <td style="display: flex; gap: 5px; align-items: center; white-space: nowrap; flex-wrap: nowrap;">
                         <button class="btn-add btn-attendance-modal" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(attendanceLabel)}</button>
                         <button class="btn-edit-modal" data-id="${s.id}" style="background-color: var(--warning); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 0;">${escapeHtml(editLabel)}</button>
-                        ${restoreBtn}
                         <button class="btn-delete btn-delete-student" data-id="${s.id}" style="padding: 5px 10px; font-size: 12px; margin: 0;">${escapeHtml(deleteLabel)}</button>
                     </td>
                 `;
 
-                // Attach event listeners safely (no inline JS string injection)
+                // Attach event listeners safely
+                tr_.querySelector('.student-select-cb').addEventListener('change', onStudentCheckboxChange);
                 tr_.querySelector('.btn-attendance-modal').addEventListener('click', () => {
                     openAttendanceModal(s.id, s.name, s.zk_id);
                 });
@@ -705,61 +525,223 @@ async function loadStudents() {
                     openEditStudentModal(s.id, s.name, s.zk_id, s.parent_email, s.standard);
                 });
                 tr_.querySelector('.btn-delete-student').addEventListener('click', () => {
-                    deleteStudent(s.id);
+                    openDeleteStudentModal(s);
                 });
-                const restore = tr_.querySelector('.btn-restore-student');
-                if (restore) restore.addEventListener('click', () => restoreStudent(s.id));
 
                 tbody.appendChild(tr_);
             });
         }
         // Apply filter in case text is already typed
         filterStudents();
+        updateBulkSelectionUI();
     } catch (e) {
         console.error("Error fetching students:", e);
         const tbody = document.getElementById("student-table-body");
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan='6' style='text-align:center; color: var(--danger);'>${tr("students.serverUnreachable", "Could not reach the server.")}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color: var(--danger);'>${tr("students.serverUnreachable", "Could not reach the server.")}</td></tr>`;
         }
     }
 }
 
-async function deleteStudent(id) {
-    // First, check how many attendance records this student has
-    let recordCount = 0;
-    try {
-        const countResp = await window.apiFetch(`/api/attendance?student_id=${id}&limit=100000`);
-        if (countResp.ok) {
-            const records = await countResp.json();
-            recordCount = records.length;
-        }
-    } catch (e) {
-        // If count check fails, proceed with basic confirmation
+async function openDeleteStudentModal(student) {
+    if (!student) return;
+    const modal = document.getElementById("delete-student-modal");
+    if (!modal) return;
+
+    document.getElementById("delete_student_id").value = student.id;
+    document.getElementById("delete-student-name").textContent = student.name || "-";
+    document.getElementById("delete-student-standard").textContent = student.standard || "-";
+    document.getElementById("delete-student-zk-id").textContent = student.zk_id != null ? student.zk_id : "-";
+    document.getElementById("delete-student-email").textContent = student.parent_email || "-";
+
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        btn.textContent = "Delete";
     }
 
-    let confirmMsg = tr("students.confirmDelete", "Are you sure you want to delete this student?");
-    if (recordCount > 0) {
-        confirmMsg = trf("students.confirmDeleteRecords", { count: recordCount },
-            `⚠️ This student has ${recordCount} attendance records that will also be permanently deleted.\n\nAre you sure you want to proceed?`);
-    }
+    modal.style.display = "block";
+}
 
-    if (!window.confirmTwice(confirmMsg,
-        tr("students.confirmDeleteAgain", "Please confirm again to permanently delete this student and related records."))) return;
+function closeDeleteStudentModal() {
+    const modal = document.getElementById("delete-student-modal");
+    if (modal) modal.style.display = "none";
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+function onDeleteCheckboxChange() {
+    const cb = document.getElementById("delete-confirm-checkbox");
+    const btn = document.getElementById("btn-confirm-delete");
+    if (cb && btn) {
+        btn.disabled = !cb.checked;
+        btn.style.opacity = cb.checked ? "1" : "0.5";
+        btn.style.cursor = cb.checked ? "pointer" : "not-allowed";
+    }
+}
+
+async function executeDeleteStudent() {
+    const cb = document.getElementById("delete-confirm-checkbox");
+    if (!cb || !cb.checked) return;
+
+    const id = document.getElementById("delete_student_id").value;
+    if (!id) return;
+
+    const btn = document.getElementById("btn-confirm-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Deleting...";
+    }
 
     try {
         const resp = await window.apiFetch(`/api/students/${id}`, { method: 'DELETE' });
         if (resp.ok) {
-            window.showToast(tr("students.deleted", "Student deleted successfully."), "success");
-            loadStudents();
-            loadClassCounts();
+            window.showToast("Student deleted successfully.", "success");
+            closeDeleteStudentModal();
+            await loadStudents();
+            if (typeof loadClassCounts === "function") loadClassCounts();
         } else {
-            window.showToast(tr("students.deleteFailed", "Failed to delete student."), "error");
+            const data = await resp.json().catch(() => ({}));
+            window.showToast("Failed to delete student." +
+                (data.detail ? `: ${data.detail}` : ""), "error");
         }
     } catch (e) {
         console.error(e);
-        window.showToast(tr("students.deleteError", "Error deleting student."), "error");
+        window.showToast("Error deleting student.", "error");
+    } finally {
+        if (btn) {
+            btn.textContent = "Delete";
+            if (cb && !cb.checked) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            }
+        }
     }
 }
+
+function openBulkDeleteModal() {
+    const currentStd = getSelectedStandard();
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const selectedIds = visibleCbs.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id, 10));
+
+    if (selectedIds.length === 0) {
+        window.showToast("Please select at least one student to delete.", "warning");
+        return;
+    }
+
+    const modal = document.getElementById("bulk-delete-modal");
+    if (!modal) return;
+
+    document.getElementById("bulk-delete-count").textContent = selectedIds.length;
+    document.getElementById("bulk-delete-standard").textContent = (currentStd === "All" ? "all classes" : currentStd);
+
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        btn.textContent = "Delete";
+    }
+
+    modal.style.display = "block";
+}
+
+function closeBulkDeleteModal() {
+    const modal = document.getElementById("bulk-delete-modal");
+    if (modal) modal.style.display = "none";
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (cb) cb.checked = false;
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+}
+
+function onBulkDeleteCheckboxChange() {
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (cb && btn) {
+        btn.disabled = !cb.checked;
+        btn.style.opacity = cb.checked ? "1" : "0.5";
+        btn.style.cursor = cb.checked ? "pointer" : "not-allowed";
+    }
+}
+
+async function executeBulkDelete() {
+    const cb = document.getElementById("bulk-delete-confirm-checkbox");
+    if (!cb || !cb.checked) return;
+
+    const currentStd = getSelectedStandard();
+    const visibleCbs = getVisibleStudentCheckboxes();
+    const selectedIds = visibleCbs.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id, 10));
+
+    if (selectedIds.length === 0) {
+        closeBulkDeleteModal();
+        return;
+    }
+
+    const btn = document.getElementById("btn-confirm-bulk-delete");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Deleting...";
+    }
+
+    try {
+        const resp = await window.apiFetch("/api/students/bulk-deactivate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                student_ids: selectedIds,
+                standard: currentStd !== "All" ? currentStd : null
+            })
+        });
+
+        if (resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            window.showToast(data.message || `Deleted ${selectedIds.length} student(s) successfully.`, "success");
+            closeBulkDeleteModal();
+            await loadStudents();
+            if (typeof loadClassCounts === "function") loadClassCounts();
+        } else {
+            const data = await resp.json().catch(() => ({}));
+            window.showToast("Failed to delete students." + (data.detail ? `: ${data.detail}` : ""), "error");
+        }
+    } catch (e) {
+        console.error(e);
+        window.showToast("Error deleting students.", "error");
+    } finally {
+        if (btn) {
+            btn.textContent = "Delete";
+            if (cb && !cb.checked) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+            }
+        }
+    }
+}
+
+window.openBulkDeleteModal = openBulkDeleteModal;
+window.closeBulkDeleteModal = closeBulkDeleteModal;
+window.onBulkDeleteCheckboxChange = onBulkDeleteCheckboxChange;
+window.executeBulkDelete = executeBulkDelete;
 
 /** Bring one archived student back — a leaver repeating the year, usually. */
 async function restoreStudent(id) {
@@ -785,27 +767,76 @@ async function restoreStudent(id) {
 }
 
 function filterStudents() {
-    const term = document.getElementById("search-id").value.toLowerCase();
-    const standardFilter = document.getElementById("filter-standard").value;
-    const rows = document.getElementById("student-table-body").getElementsByTagName("tr");
+    const nameInput = document.getElementById("search-name");
+    const idInput = document.getElementById("search-id");
+    const nameTerm = (nameInput ? nameInput.value : "").trim().toLowerCase();
+    const zkTerm = (idInput ? idInput.value : "").trim().toLowerCase();
+    const rawStandardFilter = (document.getElementById("filter-standard")?.value || "All").trim();
+    
+    // Check if standard filter means "no filter / all standards"
+    const lowerStd = rawStandardFilter.toLowerCase();
+    const isAllStandards = !rawStandardFilter || lowerStd === "all" || lowerStd === "all standards" || rawStandardFilter === "सर्व";
+
+    const tbody = document.getElementById("student-table-body");
+    if (!tbody) return;
+    const rows = tbody.getElementsByTagName("tr");
+
+    // Split search name into words so "Sanika Patil" matches "Sanika Patil", "Sanika  Patil", "Patil Sanika", etc.
+    const nameWords = nameTerm.split(/\s+/).filter(Boolean);
+
+    let visibleCount = 0;
+    let studentRowsExist = false;
+    let noMatchRow = document.getElementById("no-matching-students-row");
 
     for (let i = 0; i < rows.length; i++) {
-        const zkIdCol = rows[i].getElementsByTagName("td")[3];
-        const standardCol = rows[i].getElementsByTagName("td")[2];
-        if (zkIdCol && standardCol) {
-            const zkIdText = zkIdCol.textContent || zkIdCol.innerText;
-            const standardText = standardCol.textContent || standardCol.innerText;
+        const row = rows[i];
+        if (row.id === "no-matching-students-row") continue;
+        const tds = row.getElementsByTagName("td");
+        if (tds.length < 5) continue;
 
-            const matchSearch = zkIdText.toLowerCase().includes(term);
-            const matchStandard = (standardFilter === "All" || standardText === standardFilter);
+        studentRowsExist = true;
+        const rawName = row.dataset.name !== undefined ? row.dataset.name : (row.getAttribute("data-name") || tds[2]?.textContent || tds[2]?.innerText || "");
+        const rawZk = row.dataset.zkid !== undefined ? row.dataset.zkid : (row.getAttribute("data-zkid") || tds[4]?.textContent || tds[4]?.innerText || "");
+        const rawStd = row.dataset.standard !== undefined ? row.dataset.standard : (row.getAttribute("data-standard") || tds[3]?.textContent || tds[3]?.innerText || "");
 
-            if (matchSearch && matchStandard) {
-                rows[i].style.display = "";
-            } else {
-                rows[i].style.display = "none";
+        const nameText = rawName.trim().toLowerCase();
+        const zkIdText = rawZk.trim().toLowerCase();
+        const standardText = rawStd.trim().toLowerCase();
+
+        // Match name: every typed word must be present in the student's name
+        const matchName = nameWords.length === 0 || nameWords.every(word => nameText.includes(word));
+        // Match ZK ID
+        const matchZk = !zkTerm || zkIdText.includes(zkTerm);
+        // Match standard
+        const matchStandard = isAllStandards || (standardText === lowerStd);
+
+        if (matchName && matchZk && matchStandard) {
+            row.style.display = "";
+            visibleCount++;
+        } else {
+            row.style.display = "none";
+            const rowCb = row.querySelector(".student-select-cb");
+            if (rowCb && rowCb.checked) {
+                rowCb.checked = false;
             }
         }
     }
+
+    if (studentRowsExist) {
+        if (visibleCount === 0) {
+            if (!noMatchRow) {
+                noMatchRow = document.createElement("tr");
+                noMatchRow.id = "no-matching-students-row";
+                noMatchRow.innerHTML = `<td colspan="7" style="text-align:center; color: var(--text-muted);">No students match the search criteria.</td>`;
+                tbody.appendChild(noMatchRow);
+            } else {
+                noMatchRow.style.display = "";
+            }
+        } else if (noMatchRow) {
+            noMatchRow.style.display = "none";
+        }
+    }
+    updateBulkSelectionUI();
 }
 
 function openAttendanceModal(studentId, studentName, studentZkId) {

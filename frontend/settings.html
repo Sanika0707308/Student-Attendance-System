@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="nav.settings">Settings</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/style.css?v=10">
     <script src="js/i18n.js?v=1"></script>
 </head>
@@ -14,11 +15,18 @@
     <!-- SIDEBAR -->
     <app-sidebar></app-sidebar>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
-        <h1 class="page-title" data-i18n="set.title">System Settings</h1>
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <h1 class="page-title" data-i18n="set.title">System Settings</h1>
+            </div>
+            <div class="top-bar-right"></div>
+        </header>
 
-        <!-- ACCOUNT SECURITY -->
+        <!-- SCROLLABLE MAIN CONTENT -->
+        <main class="main-content">
+            <!-- ACCOUNT SECURITY -->
         <!-- Its own <form>, deliberately outside #settingsForm: nested forms are
              invalid HTML, and a password change must not be bundled into the
              "Save Settings" round trip. The dashboard's first-run banner links
@@ -138,6 +146,91 @@
                     <small style="color: var(--text-muted); display: block; margin-top: 10px;"
                         data-i18n-html="set.classListApplyHint">Changes take effect when
                         you press <b>Save Settings</b> at the bottom of this page.</small>
+                </div>
+
+                <!-- CLASS TOOLS -->
+                <div id="class-tools-card" style="margin-top: 25px; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--panel-bg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div>
+                            <h4 style="margin: 0 0 4px; border: none; padding: 0;" data-i18n="classTools.title">Class Tools</h4>
+                            <p style="margin: 0; font-size: 13px; color: var(--text-muted);" data-i18n="classTools.hint">
+                                End-of-year operations that used to need one student at a time.
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="btn-refresh-counts" data-i18n="classTools.refresh">Refresh</button>
+                    </div>
+
+                    <div class="class-counts" id="class-counts">
+                        <span style="font-size: 13px; color: var(--text-muted);" data-i18n="common.loading">Loading...</span>
+                    </div>
+
+                    <div class="class-tool-grid">
+                        <!-- Year-end promotion -->
+                        <section class="class-tool-panel">
+                            <h4 data-i18n="classTools.promoteHeading">Year-End Promotion</h4>
+                            <p data-i18n="classTools.promoteHint">
+                                Moves every class up one step, in the order your class list is written in
+                                Settings. The final class has nowhere left to go, so choose what happens to it.
+                            </p>
+
+                            <label class="tool-label" for="graduate-action" data-i18n="classTools.graduateAction">Final-year students</label>
+                            <select id="graduate-action" class="input-field">
+                                <option value="archive" data-i18n="classTools.graduateArchive">Archive — keep their records, hide them from the roster</option>
+                                <option value="delete" data-i18n="classTools.graduateDelete">Delete permanently — remove students and all their attendance</option>
+                                <option value="keep" data-i18n="classTools.graduateKeep">Leave them in the same class</option>
+                            </select>
+
+                            <div class="tool-actions">
+                                <button type="button" class="btn btn-primary" id="btn-preview-promotion" data-i18n="classTools.promoteBtn">Preview Promotion</button>
+                            </div>
+
+                            <div id="promotion-plan" class="tool-plan" style="display:none;"></div>
+                        </section>
+
+                        <!-- Move one class -->
+                        <section class="class-tool-panel">
+                            <h4 data-i18n="classTools.moveHeading">Move One Class</h4>
+                            <p data-i18n="classTools.moveHint">
+                                Promotes students from one class into the next higher class according to the configured class sequence.
+                            </p>
+
+                            <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                                <div style="flex:1; min-width: 120px;">
+                                    <label class="tool-label" for="move-from" data-i18n="classTools.moveFrom">From</label>
+                                    <select id="move-from" class="input-field" data-standards="one"
+                                        data-placeholder-key="classTools.selectClass" data-placeholder="Select class"
+                                        onchange="window.updateMoveToOptions()"></select>
+                                </div>
+                                <div style="flex:1; min-width: 120px;">
+                                    <label class="tool-label" for="move-to" data-i18n="classTools.moveTo">To</label>
+                                    <select id="move-to" class="input-field">
+                                        <option value="" disabled selected data-i18n="classTools.selectFromFirst">Select source class first</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="tool-actions">
+                                <button type="button" class="btn btn-warning" id="btn-move-class" data-i18n="classTools.moveBtn">Move Students</button>
+                            </div>
+                        </section>
+
+                        <!-- Clear a class -->
+                        <section class="class-tool-panel danger">
+                            <h4 data-i18n="classTools.clearHeading">Clear a Class</h4>
+                            <p data-i18n="classTools.clearHint">
+                                Deletes every student in one class along with their attendance records.
+                                Use this for a batch that has finished.
+                            </p>
+
+                            <label class="tool-label" for="clear-class" data-i18n="classTools.selectClass">Select class</label>
+                            <select id="clear-class" class="input-field" data-standards="one"
+                                data-placeholder-key="classTools.selectClass" data-placeholder="Select class"></select>
+
+                            <div class="tool-actions" style="margin-top: 15px;">
+                                <button type="button" class="btn btn-danger" id="btn-clear-class" data-i18n="classTools.clearBtn">Delete Class</button>
+                            </div>
+                        </section>
+                    </div>
                 </div>
 
                 <br>
@@ -370,25 +463,13 @@
                     style="margin-top: 30px; padding: 20px; border: 1px dashed var(--danger); border-radius: 8px; background-color: var(--panel-danger-bg);">
                     <h4 style="color: var(--danger); margin-bottom: 5px;">🔥 <span data-i18n="set.dangerZone">Danger Zone</span></h4>
 
-                    <div style="margin-bottom: 20px;">
+                    <div>
                         <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.wipeZkHint">If the ZKTeco hardware is running
                             out of memory (100k limit), use this button to safely wipe the machine. The local records
                             will be retained.</small>
                         <button type="button" id="btnClearLogs"
                             style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
                             data-i18n="set.wipeZk">Wipe ZKTeco Logs</button>
-                    </div>
-
-                    <div style="border-top: 1px dashed var(--danger); padding-top: 15px;">
-                        <small style="color: gray; display: block; margin-bottom: 10px;" data-i18n="set.resetDbHint">Wipe all local data from the system (deletes all students, attendances, and holiday settings). The system will return to a clean, default state.</small>
-                        <button type="button" id="btnResetDatabase"
-                            style="padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 5px; cursor: pointer;"
-                            data-i18n="set.resetDb">Reset Database</button>
-                        <!-- Points at the class-wise tools rather than duplicating them:
-                             clearing one class at a time lives next to the roster it
-                             affects, where the head counts are already on screen. -->
-                        <small style="color: var(--text-muted); display: block; margin-top: 10px;"
-                            data-i18n-html="set.resetClassHint">To clear one class at a time instead of everything, use <b>Class Tools</b> on the Students page.</small>
                     </div>
                 </div>
                 <div style="margin-top: 30px; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--panel-bg);">
@@ -460,6 +541,7 @@
                 <button type="submit" class="btn-mark" style="width: 100%; padding: 12px; margin-top: 20px;" data-i18n="set.saveSettings">Save Settings</button>
             </form>
         </div>
+        </main>
     </div>
 
     <!-- MESSAGE PREVIEW -->
@@ -485,8 +567,44 @@
         </div>
     </div>
 
-    <script src="js/sidebar.js?v=6"></script>
-    <script src="js/settings.js?v=6"></script>
+    <!-- DELETE CLASS CONFIRMATION MODAL -->
+    <div id="delete-class-modal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: var(--overlay-bg);">
+        <div style="background-color: var(--card-bg); color: var(--text-main); margin: 10% auto; padding: 25px; border-radius: 8px; width: 85%; max-width: 500px; position: relative; box-shadow: var(--shadow-lg);">
+            <span onclick="closeDeleteClassModal()" style="color: var(--text-main); float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px;">&times;</span>
+            <h2 style="margin-top: 0; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span> <span>Delete Class</span>
+            </h2>
+            <p style="margin: 8px 0 15px 0; color: var(--text-muted); font-size: 14px;">
+                Are you sure you want to delete the <strong id="delete-class-target-name"></strong> class?
+            </p>
+
+            <div style="background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; font-size: 14px; line-height: 1.7;">
+                <div><strong>Class:</strong> <span id="delete-class-display-name" style="font-weight: 500;">-</span></div>
+                <div><strong>Total Students:</strong> <span id="delete-class-student-count">-</span></div>
+                <div style="margin-top: 8px; color: var(--danger); font-size: 13px; font-weight: 600;">
+                    Warning: This action cannot be easily undone. Deleting this class will remove the class and all associated student and attendance records.
+                </div>
+            </div>
+
+            <input type="hidden" id="delete_class_standard">
+
+            <div style="margin: 15px 0 20px 0; padding: 10px 12px; background: rgba(220, 53, 69, 0.08); border: 1px solid rgba(220, 53, 69, 0.25); border-radius: 6px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; line-height: 1.4; color: var(--text-main); font-weight: 500; margin: 0;">
+                    <input type="checkbox" id="delete-class-confirm-checkbox" onchange="onDeleteClassCheckboxChange()" style="margin-top: 2px; cursor: pointer; width: 16px; height: 16px; accent-color: var(--danger);">
+                    <span>I understand that deleting this class will remove the class and its associated data.</span>
+                </label>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="closeDeleteClassModal()" style="padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; font-size: 13px; font-weight: 500;">Cancel</button>
+                <button type="button" id="btn-confirm-delete-class" onclick="executeDeleteClass()" disabled style="padding: 8px 18px; border-radius: 4px; border: none; background: var(--danger); color: white; cursor: not-allowed; opacity: 0.5; font-size: 13px; font-weight: 500;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/sidebar.js?v=9"></script>
+    <script src="js/email-validation.js?v=1"></script>
+    <script src="js/settings.js?v=9"></script>
 </body>
 
 </html>

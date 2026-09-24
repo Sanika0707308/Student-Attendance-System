@@ -174,8 +174,11 @@ const TRANSLATIONS = {
         "students.result": "Result",
         "students.detail": "Detail",
         "students.list": "Student List",
+        "students.searchByName": "Search by Name:",
+        "students.enterName": "Enter student name",
         "students.searchByZk": "Search by ZK ID:",
         "students.enterZk": "Enter ZK ID",
+        "students.noMatch": "No students match the search criteria.",
         "students.editTitle": "Edit Student",
         "students.saveChanges": "Save Changes",
         "students.attendanceTitle": "Student Attendance",
@@ -190,6 +193,12 @@ const TRANSLATIONS = {
         "students.editBtn": "Edit",
         "students.deleteBtn": "Delete",
         "students.zkNumeric": "ZKTeco ID must be numeric only.",
+        "students.zkAlreadyRegistered": "ZKTeco ID {id} is already registered.",
+        "students.nameRequired": "Student name is required.",
+        "students.emailRequired": "Parent email is required.",
+        "students.emailFormatError": "Please enter a valid email address (e.g., parent@example.com).",
+        "students.emailTypoDomain": "Invalid email domain '{domain}'. Please check for typos (e.g., use gmail.com).",
+        "students.duplicateNameEmail": "A student with this name and parent email already exists.",
         "students.nameTwice": "Cannot save. That name is already used twice.",
         "students.emailTwice": "Cannot save. That email is already used twice.",
         "students.added": "Student added successfully!",
@@ -200,7 +209,11 @@ const TRANSLATIONS = {
         "students.networkUpdate": "Network error while updating student.",
         "students.none": "No students enrolled.",
         "students.confirmDelete": "Are you sure you want to delete this student?",
-        "students.confirmDeleteRecords": "⚠️ This student has {count} attendance records that will also be permanently deleted.\n\nAre you sure you want to proceed?",
+        "students.confirmDeleteRecords": "⚠️ This student has {count} attendance records that will also be permanently deleted.",
+        "students.deleteConfirmTitle": "Delete Student",
+        "students.deleteWarning": "Are you sure you want to delete this student? This action cannot be easily undone.",
+        "students.deleteAcknowledge": "I understand that deleting this student will remove the student record and associated data.",
+        "students.deleting": "Deleting...",
         "students.deleted": "Student deleted successfully.",
         "students.deleteFailed": "Failed to delete student.",
         "students.deleteError": "Error deleting student.",
@@ -262,10 +275,15 @@ const TRANSLATIONS = {
         "classTools.countsHeading": "Class Sizes",
         "classTools.refresh": "Refresh",
         "classTools.moveHeading": "Move One Class",
-        "classTools.moveHint": "Moves every active student from one class into another — useful mid-year, or when a class is renamed.",
+        "classTools.moveHint": "Promotes students from one class into the next higher class according to the configured class sequence.",
         "classTools.moveFrom": "From",
         "classTools.moveTo": "To",
         "classTools.moveBtn": "Move Students",
+        "classTools.selectFromFirst": "Select source class first",
+        "classTools.noHigherClass": "No higher class available",
+        "classTools.cannotMoveHighest": "Cannot move from {from}: it is the highest class.",
+        "classTools.cannotMoveBackwards": "Cannot move backwards or to the same class ({from} → {to}). Students can only be promoted to the next higher class.",
+        "classTools.mustMoveToNext": "Students in {from} can only be moved to the next higher class ({next}).",
         "classTools.planTitle": "What will happen",
         "classTools.nothingToDo": "Nothing to promote — no students are enrolled.",
         "classTools.needTwoClasses": "Add at least two classes in Settings before promoting.",
@@ -445,7 +463,7 @@ const TRANSLATIONS = {
         "set.wipeZkHint": "If the ZKTeco hardware is running out of memory (100k limit), use this button to safely wipe the machine. The local records will be retained.",
         "set.resetDb": "Reset Database",
         "set.resetDbHint": "Wipe all local data from the system (deletes all students, attendances, and holiday settings). The system will return to a clean, default state.",
-        "set.resetClassHint": "To clear one class at a time instead of everything, use <b>Class Tools</b> on the Students page.",
+        "set.resetClassHint": "To clear one class at a time instead of everything, use <b>Class Tools</b> below.",
         "set.holidaysHeading": "Holiday Management",
         "set.holidaysHint": "Add holidays for every class or for one class only. The selected students will not be marked absent on that date, including Sundays.",
         "set.singleDay": "Single Day",
@@ -683,8 +701,11 @@ const TRANSLATIONS = {
         "students.result": "निकाल",
         "students.detail": "तपशील",
         "students.list": "विद्यार्थी यादी",
+        "students.searchByName": "नावाने शोधा:",
+        "students.enterName": "विद्यार्थ्याचे नाव टाका",
         "students.searchByZk": "ZK आयडीने शोधा:",
         "students.enterZk": "ZK आयडी टाका",
+        "students.noMatch": "शोध निकषांशी जुळणारे कोणतेही विद्यार्थी आढळले नाहीत.",
         "students.editTitle": "विद्यार्थ्याची माहिती बदला",
         "students.saveChanges": "बदल जतन करा",
         "students.attendanceTitle": "विद्यार्थ्याची उपस्थिती",
@@ -699,6 +720,12 @@ const TRANSLATIONS = {
         "students.editBtn": "बदल करा",
         "students.deleteBtn": "हटवा",
         "students.zkNumeric": "ZKTeco ID मध्ये फक्त अंक असावेत.",
+        "students.zkAlreadyRegistered": "ZKTeco ID {id} आधीच नोंदणीकृत आहे.",
+        "students.nameRequired": "विद्यार्थ्याचे नाव आवश्यक आहे.",
+        "students.emailRequired": "पालकांचा ईमेल आवश्यक आहे.",
+        "students.emailFormatError": "कृपया वैध ईमेल पत्ता प्रविष्ट करा (उदा. parent@example.com).",
+        "students.emailTypoDomain": "अवैध ईमेल डोमेन '{domain}'. कृपया शब्दलेखन तपासा (उदा. gmail.com वापरा).",
+        "students.duplicateNameEmail": "या नावाचा आणि पालकांच्या ईमेलचा विद्यार्थी आधीच अस्तित्वात आहे.",
         "students.nameTwice": "जतन करता आले नाही. हे नाव आधीच दोन वेळा वापरले आहे.",
         "students.emailTwice": "जतन करता आले नाही. हा ईमेल आधीच दोन वेळा वापरला आहे.",
         "students.added": "विद्यार्थी जोडला गेला!",
@@ -709,7 +736,11 @@ const TRANSLATIONS = {
         "students.networkUpdate": "माहिती बदलताना नेटवर्क अडचण आली.",
         "students.none": "एकही विद्यार्थी नोंदलेला नाही.",
         "students.confirmDelete": "हा विद्यार्थी हटवायचा आहे याची खात्री आहे का?",
-        "students.confirmDeleteRecords": "⚠️ या विद्यार्थ्याच्या {count} उपस्थिती नोंदी आहेत, त्या सुद्धा कायमच्या हटवल्या जातील.\n\nपुढे जायचे का?",
+        "students.confirmDeleteRecords": "⚠️ या विद्यार्थ्याच्या {count} उपस्थिती नोंदी आहेत, त्या सुद्धा कायमच्या हटवल्या जातील.",
+        "students.deleteConfirmTitle": "विद्यार्थी हटवा",
+        "students.deleteWarning": "तुम्हाला खात्री आहे की तुम्ही हा विद्यार्थी हटवू इच्छिता? ही कृती परत करता येणार नाही.",
+        "students.deleteAcknowledge": "मला समजले आहे की हा विद्यार्थी हटवल्यास विद्यार्थ्यांची माहिती आणि संबंधित नोंदी काढून टाकल्या जातील.",
+        "students.deleting": "हटवत आहे...",
         "students.deleted": "विद्यार्थी हटवला.",
         "students.deleteFailed": "विद्यार्थी हटवता आला नाही.",
         "students.deleteError": "विद्यार्थी हटवताना अडचण आली.",
@@ -771,10 +802,15 @@ const TRANSLATIONS = {
         "classTools.countsHeading": "वर्गातील संख्या",
         "classTools.refresh": "पुन्हा पहा",
         "classTools.moveHeading": "एक वर्ग हलवा",
-        "classTools.moveHint": "एका वर्गातील सर्व सक्रिय विद्यार्थी दुसऱ्या वर्गात हलवते — वर्षाच्या मध्ये, किंवा वर्गाचे नाव बदलले असेल तर उपयोगी.",
+        "classTools.moveHint": "विद्यार्थ्यांना कॉन्फिगर केलेल्या वर्ग क्रमानुसार एका वर्गातून पुढील उच्च वर्गात बढती देते.",
         "classTools.moveFrom": "कोणत्या वर्गातून",
         "classTools.moveTo": "कोणत्या वर्गात",
         "classTools.moveBtn": "विद्यार्थी हलवा",
+        "classTools.selectFromFirst": "आधी मूळ वर्ग निवडा",
+        "classTools.noHigherClass": "पुढील वर्ग उपलब्ध नाही",
+        "classTools.cannotMoveHighest": "{from} मधून हलवता येणार नाही: हा सर्वात वरचा वर्ग आहे.",
+        "classTools.cannotMoveBackwards": "मागील किंवा त्याच वर्गात हलवता येणार नाही ({from} → {to}). विद्यार्थ्यांना केवळ पुढील उच्च वर्गातच बढती दिली जाऊ शकते.",
+        "classTools.mustMoveToNext": "{from} मधील विद्यार्थ्यांना फक्त पुढील उच्च वर्गात ({next}) हलवले जाऊ शकते.",
         "classTools.planTitle": "काय होणार आहे",
         "classTools.nothingToDo": "बढती देण्यासारखे काही नाही — एकही विद्यार्थी नोंदलेला नाही.",
         "classTools.needTwoClasses": "बढती देण्यापूर्वी सेटिंग्जमध्ये कमीत कमी दोन वर्ग जोडा.",
@@ -953,7 +989,7 @@ const TRANSLATIONS = {
         "set.wipeZkHint": "ZKTeco यंत्राची स्मृती संपत आली असेल (१ लाखाची मर्यादा), तर या बटणाने यंत्र सुरक्षितपणे पुसता येते. स्थानिक नोंदी तशाच राहतात.",
         "set.resetDb": "डेटाबेस रिसेट करा",
         "set.resetDbHint": "प्रणालीमधील सर्व स्थानिक माहिती पुसून टाका (सर्व विद्यार्थी, उपस्थिती आणि सुट्ट्यांची सेटिंग्ज नष्ट होतात). प्रणाली पुन्हा कोरी, मूळ स्थितीत येते.",
-        "set.resetClassHint": "सगळे न पुसता एका वेळी एक वर्ग रिकामा करायचा असेल, तर विद्यार्थी पानावरील <b>वर्ग साधने</b> वापरा.",
+        "set.resetClassHint": "सगळे न पुसता एका वेळी एक वर्ग रिकामा करायचा असेल, तर खालील <b>वर्ग साधने</b> वापरा.",
         "set.holidaysHeading": "सुट्ट्यांचे व्यवस्थापन",
         "set.holidaysHint": "सर्व वर्गांसाठी किंवा केवळ एका वर्गासाठी सुट्ट्या जोडा. निवडलेल्या विद्यार्थ्यांना त्या तारखेला गैरहजर धरले जात नाही, रविवारसह.",
         "set.singleDay": "एक दिवस",
@@ -1060,6 +1096,12 @@ window.t = function (key, fallback) {
     const table = TRANSLATIONS[lang] || TRANSLATIONS.en;
     if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
     if (Object.prototype.hasOwnProperty.call(TRANSLATIONS.en, key)) return TRANSLATIONS.en[key];
+    if (fallback !== undefined && fallback !== null && fallback !== "") return fallback;
+    if (typeof key === "string" && key.includes(".")) {
+        const parts = key.split(".");
+        const lastPart = parts[parts.length - 1];
+        return lastPart.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim();
+    }
     return fallback !== undefined ? fallback : key;
 };
 
@@ -1094,20 +1136,20 @@ window.tf = function (key, vars, fallback) {
  */
 window.applyTranslations = function (root = document) {
     root.querySelectorAll("[data-i18n]").forEach(el => {
-        el.textContent = window.t(el.dataset.i18n);
+        el.textContent = window.t(el.dataset.i18n, el.textContent);
     });
     root.querySelectorAll("[data-i18n-html]").forEach(el => {
         // Only ever fed strings from the table above, never user input.
-        el.innerHTML = window.t(el.dataset.i18nHtml);
+        el.innerHTML = window.t(el.dataset.i18nHtml, el.innerHTML);
     });
     root.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
-        el.setAttribute("placeholder", window.t(el.dataset.i18nPlaceholder));
+        el.setAttribute("placeholder", window.t(el.dataset.i18nPlaceholder, el.getAttribute("placeholder") || ""));
     });
     root.querySelectorAll("[data-i18n-title]").forEach(el => {
-        el.setAttribute("title", window.t(el.dataset.i18nTitle));
+        el.setAttribute("title", window.t(el.dataset.i18nTitle, el.getAttribute("title") || ""));
     });
     root.querySelectorAll("[data-i18n-aria]").forEach(el => {
-        el.setAttribute("aria-label", window.t(el.dataset.i18nAria));
+        el.setAttribute("aria-label", window.t(el.dataset.i18nAria, el.getAttribute("aria-label") || ""));
     });
 
     document.documentElement.setAttribute("lang", window.getLang());

@@ -18,6 +18,8 @@ from reports_service import (
     to_base64,
 )
 
+from typing import Optional
+
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 
@@ -28,16 +30,19 @@ def _safe_filename_part(value: str) -> str:
 
 
 @router.get("/monthly-xlsx")
-def monthly_xlsx(month: str, standard: str = "All", db: Session = Depends(get_db)):
+def monthly_xlsx(month: Optional[str] = None, from_date: Optional[str] = None,
+                 to_date: Optional[str] = None, standard: str = "All",
+                 db: Session = Depends(get_db)):
     """
-    Monthly summary as a real .xlsx, base64-encoded for the native save dialog.
+    Monthly/period summary as a real .xlsx, base64-encoded for the native save dialog.
 
     Returned as JSON rather than a binary response because the frontend hands the
     bytes to window.pywebview.api.save_file — the same bridge the CSV and PDF
     exports already use, so there is one save path with one cancel behaviour.
     """
     try:
-        report = compute_monthly_report(db, month, standard)
+        report = compute_monthly_report(db, month=month, standard_filter=standard,
+                                        from_date=from_date, to_date=to_date)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -48,7 +53,8 @@ def monthly_xlsx(month: str, standard: str = "All", db: Session = Depends(get_db
         )
 
     payload = build_monthly_workbook(report)
-    filename = f"Student_Attendance_Summary_{_safe_filename_part(standard)}_{month}.xlsx"
+    period_part = f"{from_date}_to_{to_date}" if from_date and to_date else (month or "All")
+    filename = f"Student_Attendance_Summary_{_safe_filename_part(standard)}_{period_part}.xlsx"
     return {
         "filename": filename,
         "content_base64": to_base64(payload),
@@ -81,14 +87,17 @@ def daily_xlsx(date: str, standard: str = "All", db: Session = Depends(get_db)):
 
 
 @router.get("/monthly-summary")
-def monthly_summary(month: str, standard: str = "All", db: Session = Depends(get_db)):
+def monthly_summary(month: Optional[str] = None, from_date: Optional[str] = None,
+                    to_date: Optional[str] = None, standard: str = "All",
+                    db: Session = Depends(get_db)):
     """
     The same numbers as the workbook, as JSON. Exposed so the working-day and
     percentage arithmetic can be checked against the on-screen table without
     opening a spreadsheet.
     """
     try:
-        report = compute_monthly_report(db, month, standard)
+        report = compute_monthly_report(db, month=month, standard_filter=standard,
+                                        from_date=from_date, to_date=to_date)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

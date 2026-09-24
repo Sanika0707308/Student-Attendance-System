@@ -63,7 +63,7 @@ from typing import List, Optional
 from sqlalchemy import cast, Date
 
 @router.get("/", response_model=List[AttendanceRead])
-def get_attendance_logs(skip: int = 0, limit: int = 100, date: Optional[str] = None, month: Optional[str] = None, student_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_attendance_logs(skip: int = 0, limit: int = 100, date: Optional[str] = None, month: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None, student_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = db.query(Attendance)
     
     if student_id is not None:
@@ -92,6 +92,24 @@ def get_attendance_logs(skip: int = 0, limit: int = 100, date: Optional[str] = N
             query = query.filter(Attendance.punch_time >= start_date, Attendance.punch_time <= end_date)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+
+    if from_date or to_date:
+        from datetime import time
+        if from_date:
+            try:
+                parsed_from = datetime.strptime(from_date, "%Y-%m-%d").date()
+                query = query.filter(Attendance.punch_time >= datetime.combine(parsed_from, time.min))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid from_date format. Use YYYY-MM-DD")
+        if to_date:
+            try:
+                parsed_to = datetime.strptime(to_date, "%Y-%m-%d").date()
+                query = query.filter(Attendance.punch_time <= datetime.combine(parsed_to, time.max))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid to_date format. Use YYYY-MM-DD")
+        if from_date and to_date:
+            if parsed_to < parsed_from:
+                raise HTTPException(status_code=400, detail="To Date cannot be earlier than From Date.")
             
     logs = query.options(joinedload(Attendance.student)).order_by(Attendance.punch_time.desc()).offset(skip).limit(limit).all()
 
@@ -314,39 +332,11 @@ def create_manual_attendance(req: ManualAttendanceCreate,
 def update_attendance(attendance_id: int, req: ManualAttendanceUpdate,
                       background_tasks: BackgroundTasks,
                       db: Session = Depends(get_db)):
-    """Correct the time or status of an existing record."""
-    record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-
-    record.punch_time = req.punch_time
-    record.status = req.status
-    record.is_manual = True
-
-    if req.notify_parent:
-        # Re-open the record for sending and clear the previous failure text so
-        # the dashboard does not keep showing a stale reason.
-        record.email_sent = False
-        record.email_failure_reason = None
-    else:
-        record.email_sent = True
-
-    db.commit()
-    db.refresh(record)
-
-    if req.notify_parent:
-        background_tasks.add_task(_queue_parent_email, record.id)
-
-    return _serialize_log(record)
+    """Attendance records are view-only. Editing is disabled."""
+    raise HTTPException(status_code=403, detail="Attendance records are view-only. Editing attendance records is disabled.")
 
 
 @router.delete("/{attendance_id}")
 def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    """Remove a record — a duplicate, or an Absent the daemon got wrong."""
-    record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-
-    db.delete(record)
-    db.commit()
-    return {"message": "Attendance record deleted"}
+    """Attendance records are view-only. Deletion is disabled."""
+    raise HTTPException(status_code=403, detail="Attendance records are view-only. Deleting attendance records is disabled.")

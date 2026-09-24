@@ -43,7 +43,10 @@ def _assert_not_live_database():
 def setup_test_db():
     _assert_not_live_database()
     if os.path.exists(TEST_DB_FILE):
-        os.remove(TEST_DB_FILE)
+        try:
+            os.remove(TEST_DB_FILE)
+        except OSError:
+            pass
 
     test_engine = create_engine(f"sqlite:///{TEST_DB_FILE}")
     Base.metadata.create_all(bind=test_engine)

@@ -45,13 +45,21 @@ const STATUS_FIELDS = {
     "Left": { phrase: "msg_left", template: "tpl_left" },
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+function initSettingsPage() {
     loadSettings();
     loadHolidays();
     wireStandardsEditor();
     wireMessageEditor();
     loadPlaceholderReference();
-});
+    wireClassTools();
+    loadClassCounts();
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSettingsPage);
+} else {
+    initSettingsPage();
+}
 
 async function loadSettings() {
     try {
@@ -96,6 +104,7 @@ async function loadSettings() {
                 .map(s => s.trim())
                 .filter(Boolean);
             renderStandards();
+            updateMoveToOptions();
         }
     } catch (e) {
         console.error("Failed to load settings from server:", e);
@@ -460,7 +469,21 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
         tr("set.confirmSaveAgain", "Please confirm again to save the settings."))) return;
 
     const zk_ip_address = document.getElementById('zk_ip_address').value;
-    const smtp_email = document.getElementById('smtp_email').value;
+    const raw_smtp_email = document.getElementById('smtp_email').value;
+    let smtp_email = (raw_smtp_email || '').trim();
+
+    if (smtp_email) {
+        if (typeof window.validateEmailAddress === "function") {
+            const check = window.validateEmailAddress(smtp_email);
+            if (!check.valid) {
+                window.showToast(check.error, "error");
+                document.getElementById('smtp_email').focus();
+                return;
+            }
+            smtp_email = check.email;
+        }
+    }
+
     const smtp_password = document.getElementById('smtp_password').value;
     const in_time = document.getElementById('in_time').value;
     const mid_time = document.getElementById('mid_time').value;
@@ -560,6 +583,8 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
             if (Array.isArray(standards)) {
                 _standards = standards.slice();
                 renderStandards();
+                updateMoveToOptions();
+                loadClassCounts();
             }
         } else {
             const errData = await resp.json().catch(() => null);
@@ -624,48 +649,6 @@ document.getElementById('btnClearLogs').addEventListener('click', async () => {
         console.error(e);
         window.showToast(tr("set.zkNetwork",
             "Network Error: Failed to reach hardware wipe service."), "error");
-    }
-});
-
-document.getElementById('btnResetDatabase').addEventListener('click', async () => {
-    if (!confirm(tr("set.confirmResetDb1",
-        "CRITICAL WARNING: This will permanently delete ALL students, ALL attendance logs, and ALL holidays from the local database. It will also reset the settings to default.\n\nThis action CANNOT be undone.\n\nAre you absolutely sure you want to completely reset the system database?"))) {
-        return;
-    }
-
-    if (!confirm(tr("set.confirmResetDb2",
-        "FINAL CONFIRMATION: Type 'RESET' in the next prompt if you are sure."))) {
-        return;
-    }
-
-    // The typed word stays "RESET" in every language: it is matched literally,
-    // and a translated keyword would be one more thing to get wrong while
-    // standing in front of a warning about permanent deletion.
-    const confirmation = prompt(tr("set.resetPrompt",
-        "Please type 'RESET' (all caps) to confirm database wipe:"));
-    if (confirmation !== "RESET") {
-        window.showToast(tr("set.resetCancelled",
-            "Wipe cancelled. Confirmation text did not match."), "error");
-        return;
-    }
-
-    window.showToast(tr("set.resetting", "Wiping database and resetting system..."), "warning");
-
-    try {
-        const resp = await window.apiFetch('/api/settings/reset-db', { method: 'POST' });
-        const data = await resp.json();
-
-        if (data.success) {
-            window.showToast(data.message, "success");
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            window.showToast(tr("set.resetError", "Error resetting database: ") + data.message, "error");
-        }
-    } catch (e) {
-        console.error(e);
-        window.showToast(tr("set.resetNetwork", "Network Error: Failed to reset database."), "error");
     }
 });
 
@@ -924,3 +907,570 @@ function escapeHtml(str) {
 function escapeAttr(str) {
     return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+// ── Class tools ──────────────────────────────────────────────────────────────
+// Year-end promotion, forward class-to-class moves, and clearing a batch.
+
+function wireClassTools() {
+    const refresh = document.getElementById("btn-refresh-counts");
+    const preview = document.getElementById("btn-preview-promotion");
+    const move = document.getElementById("btn-move-class");
+    const clear = document.getElementById("btn-clear-class");
+    const graduateAction = document.getElementById("graduate-action");
+    const moveFrom = document.getElementById("move-from");
+
+    if (refresh) refresh.addEventListener("click", () => loadClassCounts(true));
+    if (preview) preview.addEventListener("click", previewPromotion);
+    if (move) move.addEventListener("click", moveClass);
+    if (clear) clear.addEventListener("click", openDeleteClassModal);
+
+    if (graduateAction) {
+        graduateAction.addEventListener("change", () => {
+            if (window.cachedPromotionPlan) renderPromotionPlan(window.cachedPromotionPlan);
+        });
+    }
+
+    if (moveFrom) {
+        moveFrom.addEventListener("change", updateMoveToOptions);
+        moveFrom.addEventListener("input", updateMoveToOptions);
+        moveFrom.addEventListener("standards-loaded", updateMoveToOptions);
+    }
+
+    // Modal backdrop click handler
+    window.addEventListener("click", (e) => {
+        const modal = document.getElementById("delete-class-modal");
+        if (modal && e.target === modal) {
+            closeDeleteClassModal();
+        }
+    });
+
+    // Modal escape key handler
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeDeleteClassModal();
+        }
+    });
+
+    // Run initial update for Move Class options
+    updateMoveToOptions();
+}
+
+function extractStandardNumber(std) {
+    const m = String(std || "").match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+}
+
+function findNextStandard(source, standardsList) {
+    if (!source || !Array.isArray(standardsList) || standardsList.length === 0) return null;
+    const sourceNum = extractStandardNumber(source);
+    if (sourceNum !== null) {
+        const next = standardsList.find(s => extractStandardNumber(s) === sourceNum + 1);
+        if (next) return next;
+        return null;
+    }
+    const idx = standardsList.findIndex(s => s && s.trim().toLowerCase() === source.trim().toLowerCase());
+    if (idx !== -1 && idx + 1 < standardsList.length) {
+        return standardsList[idx + 1];
+    }
+    return null;
+}
+
+async function updateMoveToOptions() {
+    const moveFrom = document.getElementById("move-from");
+    const moveTo = document.getElementById("move-to");
+    if (!moveFrom || !moveTo) return;
+
+    // Dynamically retrieve standards from memory, cached settings, or window.getStandards()
+    let standards = (_standards && _standards.length) ? [..._standards] : [];
+    if (!standards.length && typeof window.getStandards === "function") {
+        try {
+            standards = await window.getStandards();
+        } catch (e) {
+            standards = [];
+        }
+    }
+    if (!standards.length) {
+        standards = Array.from(moveFrom.options).map(o => o.value).filter(Boolean);
+    }
+
+    // Sort standards logically by numeric value if available
+    standards.sort((a, b) => {
+        const numA = extractStandardNumber(a);
+        const numB = extractStandardNumber(b);
+        if (numA !== null && numB !== null) return numA - numB;
+        return 0;
+    });
+
+    // If moveFrom has no class options yet, but standards are resolved, populate moveFrom
+    const validFromOptions = Array.from(moveFrom.options).filter(o => Boolean(o.value));
+    if (validFromOptions.length === 0 && standards.length > 0) {
+        const placeholder = typeof window.tr === "function"
+            ? window.tr("classTools.selectClass", "Select class")
+            : "Select class";
+        let fromHtml = `<option value="" disabled selected>${placeholder}</option>`;
+        standards.forEach(s => {
+            fromHtml += `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`;
+        });
+        moveFrom.innerHTML = fromHtml;
+    }
+
+    const fromVal = (moveFrom.value || "").trim();
+
+    if (!fromVal) {
+        const msg = typeof window.tr === "function"
+            ? window.tr("classTools.selectFromFirst", "Select source class first")
+            : "Select source class first";
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
+        moveTo.disabled = true;
+        moveTo.value = "";
+        return;
+    }
+
+    // Strictly resolve the immediately next standard
+    const nextStd = findNextStandard(fromVal, standards);
+
+    if (!nextStd) {
+        // Highest standard or no next sequential class exists
+        const msg = typeof window.tr === "function"
+            ? window.tr("classTools.noHigherClass", "No next standard available")
+            : "No next standard available";
+        moveTo.innerHTML = `<option value="" disabled selected>${escapeHtml(msg)}</option>`;
+        moveTo.disabled = true;
+        moveTo.value = "";
+        return;
+    }
+
+    // Immediately next standard only
+    moveTo.disabled = false;
+    moveTo.innerHTML = `<option value="${escapeAttr(nextStd)}" selected>${escapeHtml(nextStd)}</option>`;
+    moveTo.value = nextStd;
+}
+
+window.updateMoveToOptions = updateMoveToOptions;
+
+async function loadClassCounts(announce = false) {
+    const box = document.getElementById("class-counts");
+    if (!box) return;
+
+    try {
+        const resp = await window.apiFetch('/api/students/by-standard');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const rows = data.standards || [];
+        window.cachedClassCounts = rows;
+
+        if (rows.length === 0) {
+            box.innerHTML = `<span style="font-size:13px; color: var(--text-muted);">${tr("students.none", "No students enrolled.")}</span>`;
+            return;
+        }
+
+        box.innerHTML = rows.map(r => {
+            const archived = r.archived > 0
+                ? ` <span class="count-value" style="color: var(--text-muted);">+${r.archived}</span>`
+                : "";
+            const title = r.archived > 0
+                ? ` title="${escapeAttr(r.archived + " " + tr("students.archived", "Archived"))}"`
+                : "";
+            return `<span class="count-chip${r.archived > 0 && r.active === 0 ? ' archived' : ''}"${title}>` +
+                `<strong>${escapeHtml(r.standard)}</strong>` +
+                `<span class="count-value">${r.active}</span>${archived}</span>`;
+        }).join("");
+
+        if (announce) window.showToast(tr("classTools.countsRefreshed", "Class sizes updated."), "success");
+    } catch (e) {
+        console.error("Class counts failed", e);
+        box.innerHTML = `<span style="font-size:13px; color: var(--danger);">${tr("classTools.countsFailed", "Could not read the class sizes.")}</span>`;
+    }
+}
+
+/** Head count of one class, from the cached chips — used only in confirm text. */
+function cachedCountFor(standard, key = "active") {
+    const rows = window.cachedClassCounts || [];
+    const match = rows.find(r => r.standard === standard);
+    return match ? match[key] : 0;
+}
+
+async function previewPromotion() {
+    const box = document.getElementById("promotion-plan");
+    const button = document.getElementById("btn-preview-promotion");
+    if (!box) return;
+
+    box.style.display = "block";
+    box.innerHTML = `<span style="color: var(--text-muted);">${tr("classTools.loadingPlan", "Working out the plan…")}</span>`;
+    button.disabled = true;
+
+    try {
+        const resp = await window.apiFetch('/api/students/promotion-plan');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        window.cachedPromotionPlan = data;
+        renderPromotionPlan(data);
+    } catch (e) {
+        console.error("Promotion plan failed", e);
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.planFailed", "Could not build the promotion plan.")}</span>`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderPromotionPlan(data) {
+    const box = document.getElementById("promotion-plan");
+    const plan = data.plan || [];
+
+    if (plan.length < 2) {
+        box.innerHTML = `<span style="color: var(--danger);">${tr("classTools.needTwoClasses", "Add at least two classes in Settings before promoting.")}</span>`;
+        return;
+    }
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const graduateConsequence = {
+        archive: tr("classTools.graduatingArchive", "will be archived (records kept)"),
+        delete: tr("classTools.graduatingDelete", "will be deleted permanently, with all attendance"),
+        keep: tr("classTools.graduatingKeep", "stay where they are")
+    }[action];
+
+    const items = plan.map(step => {
+        const count = step.students;
+        if (step.graduating) {
+            if (count === 0) {
+                return `<li class="plan-empty">${escapeHtml(step.from_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+            }
+            return `<li class="plan-graduating">${escapeHtml(step.from_standard)} · ${count} ` +
+                `${tr("classTools.students", "students")} ${tr("classTools.willGraduate", "graduating")} — ${escapeHtml(graduateConsequence)}</li>`;
+        }
+        if (count === 0) {
+            return `<li class="plan-empty">${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} — ${tr("classTools.noStudents", "No students in this class.")}</li>`;
+        }
+        return `<li>${escapeHtml(step.from_standard)} → ${escapeHtml(step.to_standard)} · ${count} ${tr("classTools.students", "students")}</li>`;
+    }).join("");
+
+    const nobody = (data.total_moving || 0) === 0 && (data.total_graduating || 0) === 0;
+
+    box.innerHTML = `
+        <h5>${tr("classTools.planTitle", "What will happen")}</h5>
+        <ul>${items}</ul>
+        ${nobody
+            ? `<span class="plan-empty">${tr("classTools.nothingToDo", "Nothing to promote — no students are enrolled.")}</span>`
+            : `<label class="tool-label" for="promote-confirm">${tr("classTools.typePromote", "Type PROMOTE to confirm")}</label>
+               <input type="text" id="promote-confirm" class="input-field" autocomplete="off" spellcheck="false">
+               <button type="button" class="btn btn-danger" id="btn-confirm-promotion" style="margin-top: 10px;">${tr("classTools.promoteConfirmBtn", "Promote All Classes")}</button>`}
+    `;
+
+    const confirmBtn = document.getElementById("btn-confirm-promotion");
+    if (confirmBtn) confirmBtn.addEventListener("click", confirmPromotion);
+
+    const promoteInput = document.getElementById("promote-confirm");
+    if (promoteInput) {
+        promoteInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                confirmPromotion();
+            }
+        });
+    }
+}
+
+async function confirmPromotion() {
+    const input = document.getElementById("promote-confirm");
+    const button = document.getElementById("btn-confirm-promotion");
+    const typed = (input.value || "").trim();
+
+    if (typed !== "PROMOTE") {
+        window.showToast(tr("classTools.promoteConfirm", "Type PROMOTE (in capitals) to run this promotion."), "warning");
+        input.focus();
+        return;
+    }
+
+    if (!window.confirmTwice(
+        tr("classTools.promoteConfirmAgain", "The promotion plan is ready. Do you want to continue?"),
+        tr("classTools.promoteFinalConfirm", "Please confirm again to promote all classes."))) return;
+
+    const action = document.getElementById("graduate-action").value || "archive";
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = tr("common.working", "Working…");
+
+    try {
+        const resp = await window.apiFetch('/api/students/promote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ graduate_action: action, confirm: "PROMOTE" })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) ||
+                tr("classTools.promoteFailed", "Could not run the promotion."), "error");
+            return;
+        }
+
+        const result = await resp.json();
+        let message = trf("classTools.promoted", { moved: result.promoted },
+            `Promotion complete. ${result.promoted} students moved.`);
+        if (result.graduate_action === "archive" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedArchived", { n: result.graduated }, `${result.graduated} archived.`);
+        } else if (result.graduate_action === "delete" && result.graduated > 0) {
+            message += " " + trf("classTools.promotedDeleted", { n: result.graduated }, `${result.graduated} deleted.`);
+        }
+        window.showToast(message, "success");
+
+        window.cachedPromotionPlan = null;
+        document.getElementById("promotion-plan").style.display = "none";
+        loadClassCounts();
+    } catch (e) {
+        console.error("Promotion failed", e);
+        window.showToast(tr("common.serverError", "Error connecting to server"), "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+async function moveClass() {
+    const from = (document.getElementById("move-from").value || "").trim();
+    const to = (document.getElementById("move-to").value || "").trim();
+    const button = document.getElementById("btn-move-class");
+
+    if (!from || !to) {
+        window.showToast("Choose both a source and a destination class.", "warning");
+        return;
+    }
+    if (from === to) {
+        window.showToast("Those are the same class — nothing to move.", "warning");
+        return;
+    }
+
+    const standards = (_standards && _standards.length) ? [..._standards] : (await window.getStandards());
+    standards.sort((a, b) => {
+        const numA = extractStandardNumber(a);
+        const numB = extractStandardNumber(b);
+        if (numA !== null && numB !== null) return numA - numB;
+        return 0;
+    });
+
+    const fromNum = extractStandardNumber(from);
+    const toNum = extractStandardNumber(to);
+
+    if (fromNum !== null && toNum !== null) {
+        if (toNum < fromNum) {
+            window.showToast(`Cannot move: destination class (${to}) is lower than source class (${from}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (toNum === fromNum) {
+            window.showToast("Those are the same class — nothing to move.", "warning");
+            return;
+        }
+        if (toNum > fromNum + 1) {
+            window.showToast(`Cannot skip standards (${from} -> ${to}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (toNum !== fromNum + 1) {
+            window.showToast("Students can move only to the immediately next higher standard.", "error");
+            return;
+        }
+    } else {
+        const sourceIdx = standards.findIndex(s => s && s.trim().toLowerCase() === from.toLowerCase());
+        const targetIdx = standards.findIndex(s => s && s.trim().toLowerCase() === to.toLowerCase());
+
+        if (sourceIdx === -1 || targetIdx === -1) {
+            window.showToast("Please select valid classes.", "error");
+            return;
+        }
+        if (targetIdx < sourceIdx) {
+            window.showToast(`Cannot move: destination class (${to}) is lower than source class (${from}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+        if (targetIdx === sourceIdx) {
+            window.showToast("Those are the same class — nothing to move.", "warning");
+            return;
+        }
+        if (targetIdx !== sourceIdx + 1) {
+            window.showToast(`Cannot skip standards (${from} -> ${to}). Students can move only to the immediately next higher standard.`, "error");
+            return;
+        }
+    }
+
+    const count = cachedCountFor(from);
+    if (count === 0) {
+        window.showToast(`There are no active students in ${from}.`, "warning");
+        return;
+    }
+
+    if (!window.confirmTwice(
+        `Move ${count} students from ${from} to ${to}?`,
+        "Please confirm again to move these students.")) return;
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Working…";
+
+    try {
+        const resp = await window.apiFetch('/api/students/change-standard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_standard: from, to_standard: to })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) || "Could not move that class.", "error");
+            return;
+        }
+
+        const result = await resp.json();
+        window.showToast(`Moved ${result.moved} students to ${to}.`, "success");
+        await loadClassCounts();
+        await updateMoveToOptions();
+    } catch (e) {
+        console.error("Class move failed", e);
+        window.showToast("Error connecting to server", "error");
+    } finally {
+        button.disabled = false;
+        button.textContent = original;
+    }
+}
+
+function openDeleteClassModal() {
+    const select = document.getElementById("clear-class");
+    const cls = (select ? select.value : "").trim();
+
+    if (!cls) {
+        window.showToast("Choose the class you want to delete.", "warning");
+        return;
+    }
+
+    const total = cachedCountFor(cls, "total");
+    const active = cachedCountFor(cls, "active");
+    const displayCount = total > 0 ? `${total} students (${active} active)` : `0 students`;
+
+    const modal = document.getElementById("delete-class-modal");
+    const targetName = document.getElementById("delete-class-target-name");
+    const displayName = document.getElementById("delete-class-display-name");
+    const studentCount = document.getElementById("delete-class-student-count");
+    const hiddenInput = document.getElementById("delete_class_standard");
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+
+    if (targetName) targetName.textContent = cls;
+    if (displayName) displayName.textContent = cls;
+    if (studentCount) studentCount.textContent = displayCount;
+    if (hiddenInput) hiddenInput.value = cls;
+    if (checkbox) checkbox.checked = false;
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = "0.5";
+        deleteBtn.style.cursor = "not-allowed";
+        deleteBtn.textContent = "Delete";
+    }
+
+    if (modal) modal.style.display = "block";
+}
+
+function closeDeleteClassModal() {
+    const modal = document.getElementById("delete-class-modal");
+    if (modal) modal.style.display = "none";
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    if (checkbox) checkbox.checked = false;
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = "0.5";
+        deleteBtn.style.cursor = "not-allowed";
+        deleteBtn.textContent = "Delete";
+    }
+}
+
+function onDeleteClassCheckboxChange() {
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    if (deleteBtn) {
+        if (checkbox && checkbox.checked) {
+            deleteBtn.disabled = false;
+            deleteBtn.style.opacity = "1";
+            deleteBtn.style.cursor = "pointer";
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.style.opacity = "0.5";
+            deleteBtn.style.cursor = "not-allowed";
+        }
+    }
+}
+
+async function executeDeleteClass() {
+    const hiddenInput = document.getElementById("delete_class_standard");
+    const cls = (hiddenInput ? hiddenInput.value : "").trim();
+    const deleteBtn = document.getElementById("btn-confirm-delete-class");
+    const checkbox = document.getElementById("delete-class-confirm-checkbox");
+
+    if (!cls) {
+        window.showToast("No class selected.", "warning");
+        closeDeleteClassModal();
+        return;
+    }
+
+    if (!checkbox || !checkbox.checked) {
+        window.showToast("Please confirm by checking the box before deleting.", "warning");
+        return;
+    }
+
+    const originalText = deleteBtn ? deleteBtn.textContent : "Delete";
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting…";
+    }
+
+    try {
+        const resp = await window.apiFetch('/api/students/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ standard: cls, confirm: cls, include_archived: true })
+        });
+
+        if (!resp.ok) {
+            const detail = await resp.json().then(d => d.detail).catch(() => null);
+            window.showToast(window.describeApiError(detail) || "Could not delete that class.", "error");
+            return;
+        }
+
+        const result = await resp.json();
+        closeDeleteClassModal();
+
+        const msg = result.students_deleted > 0
+            ? `Deleted class "${cls}" with ${result.students_deleted} students and ${result.attendance_deleted} attendance records.`
+            : `Class "${cls}" has been successfully removed.`;
+        window.showToast(msg, "success");
+
+        // Remove from local _standards array if present
+        if (Array.isArray(_standards)) {
+            _standards = _standards.filter(s => s !== cls);
+            renderStandards();
+        }
+
+        // Refresh standards everywhere
+        if (typeof window.refreshStandards === "function") {
+            await window.refreshStandards();
+        }
+
+        // Reload class counts & update options
+        await loadClassCounts();
+        await updateMoveToOptions();
+
+        // Clear selection in clear-class dropdown
+        const clearSelect = document.getElementById("clear-class");
+        if (clearSelect) clearSelect.value = "";
+    } catch (e) {
+        console.error("Class delete failed", e);
+        window.showToast("Error connecting to server", "error");
+    } finally {
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+        }
+    }
+}
+
+window.openDeleteClassModal = openDeleteClassModal;
+window.closeDeleteClassModal = closeDeleteClassModal;
+window.onDeleteClassCheckboxChange = onDeleteClassCheckboxChange;
+window.executeDeleteClass = executeDeleteClass;
+

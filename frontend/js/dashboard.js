@@ -65,33 +65,10 @@ async function loadInstituteSettings() {
     }
 }
 
-/**
- * Warn while the account is still on the shipped admin/admin password.
- * Dismissal is per-session, which is deliberate: it stops nagging during this
- * sitting but returns after the next sign-in until the password is changed.
- */
-function setupPasswordNotice() {
-    const banner = document.getElementById("password-notice");
-    if (!banner) return;
-
-    if (sessionStorage.getItem("must_change_password") === "true") {
-        banner.classList.add("show");
-    }
-
-    const close = document.getElementById("password-notice-close");
-    if (close) {
-        close.addEventListener("click", () => {
-            banner.classList.remove("show");
-            sessionStorage.removeItem("must_change_password");
-        });
-    }
-}
-
 document.addEventListener("DOMContentLoaded", loadDashboard);
 
 async function loadDashboard() {
     try {
-        setupPasswordNotice();
 
         // Load the institute name and the retry policy before the first render so
         // the heading and the retry controls are correct from the outset.

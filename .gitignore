@@ -24,6 +24,8 @@ python_app/.encryption_key
 
 # Logs & temp test output
 *.log
+_log_offset.txt
+db_list.txt
 pytest_*.txt
 test_output*.txt
 
@@ -33,6 +35,7 @@ test_output*.txt
 .DS_Store
 Thumbs.db
 node_modules/
+.claude/
 
 # Local settings
 .env

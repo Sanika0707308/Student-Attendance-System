@@ -29,7 +29,7 @@ The script invokes PyInstaller with the following critical flags:
 ### Step 2: Version Patching
 Once the core `.exe` is built, the script dynamically updates the version number (e.g., `v1.9`) inside the `installer.iss` file using Regular Expressions. This ensures that every time we build, the output installer file gets the correct version tag automatically without manual editing.
 
-### Step 3: Inno Setup Compilation (`AttendanceSystem_Setup_v1.9.exe`)
+### Step 3: Inno Setup Compilation (`AttendanceSystem_Setup_v2.0.exe`)
 The script calls `ISCC.exe` (Inno Setup Command-Line Compiler) and feeds it the `installer.iss` file. 
 
 The Inno Setup script handles the Windows-specific magic:
@@ -40,6 +40,6 @@ The Inno Setup script handles the Windows-specific magic:
 
 ## 🔄 The Final Result
 
-The entire process outputs a professional installer: **`AttendanceSystem_Setup_v1.9.exe`**. 
+The entire process outputs a professional installer: **`AttendanceSystem_Setup_v2.0.exe`**. 
 
 Because of this automated pipeline, the client doesn't need to install Python, configure environments, or know how to run scripts. They simply double-click the Setup file, click "Next", and the app is ready to use!

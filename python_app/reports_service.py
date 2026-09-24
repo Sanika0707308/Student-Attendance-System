@@ -26,6 +26,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from sqlalchemy import or_
 from database import Attendance, Holiday, Student, SystemSettings
 
 # Short codes for the day-by-day grid, so a month fits on one screen.
@@ -83,34 +84,51 @@ def _is_holiday_for(index: dict, date_str: str, standard: str) -> bool:
     return "All" in standards or (standard or "11th") in standards
 
 
-def compute_monthly_report(db, month: str, standard_filter: str = "All") -> dict:
+def compute_monthly_report(db, month: str = None, standard_filter: str = "All",
+                           from_date: str = None, to_date: str = None) -> dict:
     """
-    Build the monthly summary for a "YYYY-MM" month. Mirrors reports.js so the
-    workbook always agrees with what the Reports page shows.
+    Build the attendance summary for a date range or a "YYYY-MM" month. Mirrors
+    reports.js so the workbook always agrees with what the Reports page shows.
     """
-    try:
-        parsed = datetime.strptime(month, "%Y-%m")
-    except (ValueError, TypeError):
-        raise ValueError("Invalid month. Use YYYY-MM.")
+    if from_date and to_date:
+        try:
+            f_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+            t_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+        if t_date < f_date:
+            raise ValueError("To Date cannot be earlier than From Date.")
+        start = datetime.combine(f_date, time_cls.min)
+        end = datetime.combine(t_date, time_cls.max)
+        period_label = f"{from_date} to {to_date}"
+    elif month:
+        try:
+            parsed = datetime.strptime(month, "%Y-%m")
+        except (ValueError, TypeError):
+            raise ValueError("Invalid month. Use YYYY-MM.")
 
-    _, last_day = calendar.monthrange(parsed.year, parsed.month)
-    start = datetime.combine(parsed.date().replace(day=1), time_cls.min)
-    end = datetime.combine(parsed.date().replace(day=last_day), time_cls.max)
+        _, last_day = calendar.monthrange(parsed.year, parsed.month)
+        start = datetime.combine(parsed.date().replace(day=1), time_cls.min)
+        end = datetime.combine(parsed.date().replace(day=last_day), time_cls.max)
+        period_label = month
+    else:
+        raise ValueError("Either month or both from_date and to_date must be provided.")
 
     holiday_index = _holiday_index(db)
-
-    # Active roster only: an archived (graduated) student would otherwise show
-    # up every month with 0% attendance.
-    students = (db.query(Student)
-                .filter(Student.is_active == True)  # noqa: E712 — SQL boolean
-                .order_by(Student.standard, Student.name).all())
-    if standard_filter and standard_filter != "All":
-        students = [s for s in students if (s.standard or "11th") == standard_filter]
 
     logs = (db.query(Attendance)
             .filter(Attendance.punch_time >= start, Attendance.punch_time <= end)
             .order_by(Attendance.punch_time.asc())
             .all())
+
+    # Include active roster plus any inactive/graduated students who have attendance
+    # records in this date range, ensuring historical reports remain complete.
+    attended_student_ids = {log.student_id for log in logs if log.student_id}
+    students = (db.query(Student)
+                .filter(or_(Student.is_active == True, Student.id.in_(attended_student_ids)))  # noqa: E712
+                .order_by(Student.standard, Student.name).all())
+    if standard_filter and standard_filter != "All":
+        students = [s for s in students if (s.standard or "11th") == standard_filter]
 
     # Drop anything recorded on a day that turned out to be a holiday for that
     # student's class — a class-specific holiday must never count against the
@@ -181,7 +199,10 @@ def compute_monthly_report(db, month: str, standard_filter: str = "All") -> dict
 
     return {
         "institute_name": _institute_name(db),
-        "month": month,
+        "month": period_label,
+        "period": period_label,
+        "from_date": from_date,
+        "to_date": to_date,
         "standard_filter": standard_filter or "All",
         "working_days": headline_working_days,
         "avg_present_pct": avg_present,
@@ -211,19 +232,19 @@ def compute_daily_report(db, date_str: str, standard_filter: str = "All") -> dic
     mid = _mid_time(db)
     holiday_index = _holiday_index(db)
 
-    # Active roster only: an archived (graduated) student would otherwise show
-    # up every month with 0% attendance.
-    students = (db.query(Student)
-                .filter(Student.is_active == True)  # noqa: E712 — SQL boolean
-                .order_by(Student.standard, Student.name).all())
-    if standard_filter and standard_filter != "All":
-        students = [s for s in students if (s.standard or "11th") == standard_filter]
-
     logs = (db.query(Attendance)
             .filter(Attendance.punch_time >= datetime.combine(target, time_cls.min),
                     Attendance.punch_time <= datetime.combine(target, time_cls.max))
             .order_by(Attendance.punch_time.asc())
             .all())
+
+    # Include active roster plus any inactive students who punched on this date
+    attended_student_ids = {log.student_id for log in logs if log.student_id}
+    students = (db.query(Student)
+                .filter(or_(Student.is_active == True, Student.id.in_(attended_student_ids)))  # noqa: E712
+                .order_by(Student.standard, Student.name).all())
+    if standard_filter and standard_filter != "All":
+        students = [s for s in students if (s.standard or "11th") == standard_filter]
 
     by_student = {}
     for log in logs:
@@ -310,7 +331,7 @@ def build_monthly_workbook(report: dict) -> bytes:
     summary["A1"].font = TITLE_FONT
     summary["A2"] = "Monthly Attendance Summary"
     summary["A2"].font = Font(bold=True, size=11)
-    summary["A3"] = (f"Month: {report['month']}    |    Standard: {report['standard_filter']}"
+    summary["A3"] = (f"Period: {report['month']}    |    Standard: {report['standard_filter']}"
                      f"    |    Working days: {report['working_days']}")
     summary["A3"].font = SUBTITLE_FONT
     summary["A4"] = (f"Average attendance: {report['avg_present_pct']}%    |    "
@@ -345,8 +366,9 @@ def build_monthly_workbook(report: dict) -> bytes:
     grid_sheet["A2"].font = SUBTITLE_FONT
 
     dates = report["dates"]
-    # Only the day-of-month is shown in the header; the full month is in the title.
-    grid_headers = ["ZK ID", "Student Name", "Standard"] + [d[-2:] for d in dates]
+    months_in_dates = {d[:7] for d in dates}
+    date_labels = [d[5:] if len(months_in_dates) > 1 else d[-2:] for d in dates]
+    grid_headers = ["ZK ID", "Student Name", "Standard"] + date_labels
     _write_header_row(grid_sheet, 4, grid_headers)
 
     for offset, row in enumerate(report["students"], start=5):
@@ -368,7 +390,7 @@ def build_monthly_workbook(report: dict) -> bytes:
 
     _autosize(grid_sheet, minimum=5, maximum=30)
     for date_offset in range(4, 4 + len(dates)):
-        grid_sheet.column_dimensions[get_column_letter(date_offset)].width = 5
+        grid_sheet.column_dimensions[get_column_letter(date_offset)].width = 7 if len(months_in_dates) > 1 else 5
     grid_sheet.freeze_panes = "D5"
 
     # ── Raw log ──
