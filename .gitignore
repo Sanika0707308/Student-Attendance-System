@@ -2,38 +2,41 @@
 venv/
 .venv/
 env/
-bin/
-lib/
-include/
-Scripts/
 
-# Python cache
+# Python cache & compiled files
 __pycache__/
 *.py[cod]
 *$py.class
+*.spec
 
-# Databases
+# PyInstaller & Build artifacts
+dist/
+build/
+build_temp/
+releases/
+*.exe
+*.zip
+
+# Databases & local data
 *.db
 *.sqlite3
+python_app/.encryption_key
 
-# OS related
-.DS_Store
-Thumbs.db
+# Logs & temp test output
+*.log
+_log_offset.txt
+db_list.txt
+pytest_*.txt
+test_output*.txt
 
-# IDEs
+# IDEs & System
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+node_modules/
+.claude/
 
 # Local settings
 .env
 config_local.py
-
-# Others
-*.log
-node_modules/
-dist/
-build/
-*.exe
-*.zip
-_log_offset.txt
-.claude/
